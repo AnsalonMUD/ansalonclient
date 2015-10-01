@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE muclient>
+
+<!-- Based on KaViR's GUI Plugin -->
+<!-- Based on 2011-04-01 00:49:31 Ansalon_GUI by Paladine -->
+<!-- Changelog
+  2015-10-01 gameshogun: Pulled the Ansalon_GUI status_bar as a separate plugin.
+-->
+
+<muclient>
+  <plugin
+    name="Ansalon_Status_Bar"
+    author="Ansalon"
+    id="2b80a098b908dfecb9813ef8"
+    language="Lua"
+    purpose="HP, Mana, Movement, and Opponent HP bars"
+    date_written="2009-02-24 13:30"
+    date_modified="2015-10-01"
+    requires="4.51"
+    version="1.0"
+    save_state="y"
+    >
+
+    <description trim="y">
+      <![CDATA[
+      Install this plugin to show an info bar with HP, Mana,
+      and Movement points shown as a bar. Plus the Mob's Health.
+
+      The window can be dragged to a new location with the mouse.
+      ]]>
+    </description>
+  </plugin>
+
+  <!--  Get our standard constants -->
+  <include name="constants.lua"/>
+
+  <script>
+    <![CDATA[
+      --latest
+      local using_msdp = false
+      local bars_window = "bars_image"  -- miniwindow ID
+      local health_window = "health_bar"  -- miniwindow ID
+      local mana_window = "mana_bar"  -- miniwindow ID
+      local movement_window = "movement_bar"  -- miniwindow ID
+      local mob_window = "exp_bar"  -- miniwindow ID
+      local msdp = {}
+      local colourGold = ColourNameToRGB("gold")
+      local colourSilver = ColourNameToRGB("silver")
+      local colourBlack = ColourNameToRGB("black")
+
+      require "movewindow"  -- load the movewindow.lua module
+      require "copytable"
+
+      BODY_FONT_NAME = "FixedSys"
+      BODY_FONT_SIZE = 8
+
+      -- doing it this way makes them default to true the first time around
+      echo = not (GetVariable("echo") == "false")
+
+      WINDOW_WIDTH = 120
+      WINDOW_HEIGHT = 125
+
+      -- offset of text from edge
+      TEXT_INSET = 5
+
+      WINDOW_COLUMNS = ""
+      WINDOW_LINES = ""
+
+      theme = {
+        WINDOW_BACKGROUND = ColourNameToRGB ("#000000"), -- for miniwindow body
+        WINDOW_BORDER = ColourNameToRGB("#E8E8E8"), -- for miniwindow body
+
+        HIGHLIGHT=ColourNameToRGB("#FFFFFF"), -- for 3D surfaces
+        FACE=ColourNameToRGB("#D4D0C8"), -- for 3D surfaces
+        INNERSHADOW=ColourNameToRGB("#808080"), -- for 3D surfaces
+        OUTERSHADOW = ColourNameToRGB("#404040"), -- for 3D surfaces
+
+        BACK_FACE = ColourNameToRGB ("#E8E8E8"), -- for contrasting details
+        DETAIL = ColourNameToRGB ("#000000"), -- for contrasting details
+
+        TITLE_HEIGHT = 17, -- for miniwindow title area
+        SUBTITLE_HEIGHT = 17, -- for miniwindow title area
+        TITLE_FONT_NAME = "Dina", -- for miniwindow title area
+        TITLE_FONT_SIZE = 8 -- for miniwindow title area
+      }  -- end theme table
+
+      -- replacement for WindowRectOp action 5, which allows for a 3D look while maintaining color theme
+      -- Requires global theme.HIGHLIGHT, theme.FACE, theme.INNERSHADOW, and theme.OUTERSHADOW rgb colors to be set.
+      function DrawThemed3DRect(Window, left, top, right, bottom)
+        WindowRectOp(Window, miniwin.rect_fill, left, top, right, bottom, theme.FACE)
+        WindowLine(Window, left, top, right, top, theme.HIGHLIGHT,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+        WindowLine(Window, left, top, left, bottom, theme.HIGHLIGHT,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+        WindowLine(Window, left, bottom-2, right, bottom-2, theme.INNERSHADOW,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+        WindowLine(Window, right-2, top, right-2, bottom-2, theme.INNERSHADOW,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+        WindowLine(Window, left, bottom-1, right, bottom-1, theme.OUTERSHADOW,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+        WindowLine(Window, right-1, top, right-1, bottom-1, theme.OUTERSHADOW,
+                    miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      end
+
+      Win = GetPluginID()
+      font_height = ""
+      line_height = ""
+      windowinfo = ""
+      startx = ""
+      starty = ""
+
+      function OnPluginInstall()
+        -- Dummy window to get font characteristics
+        check (WindowCreate (Win, 0, 0, 1, 1, 0, 0, theme.WINDOW_BACKGROUND) )
+        check (WindowFont(Win, "bodyfont"..Win, BODY_FONT_NAME, BODY_FONT_SIZE))
+        check (WindowFont(Win, "titlefont"..Win, theme.TITLE_FONT_NAME, theme.TITLE_FONT_SIZE))
+        font_height = WindowFontInfo (Win, "bodyfont"..Win, 1) -  WindowFontInfo (Win, "bodyfont"..Win, 4) + 1
+        line_height = font_height+1
+        font_width = WindowTextWidth (Win, "bodyfont"..Win, "W")
+
+        -- install the window movement handler, get back the window position
+        windowinfo = movewindow.install (Win, miniwin.pos_top_right, 0, true)
+
+        -- check for Echo/Timestamp/date_format/window size (in pixels) variables, if not there, set them
+        if WINDOW_WIDTH == nil then
+            WINDOW_WIDTH = (font_width*80) -- 80 columns
+        end
+        if WINDOW_HEIGHT == nil then
+            WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*6)+2 -- 6 lines
+        end -- if
+        init(true)
+        OnPluginEnable ()  -- do initialization stuff
+      end -- function OnPluginInstall
+
+      function init(firstTime)
+        -- how many lines and columns will fit?
+        WINDOW_LINES = math.ceil((WINDOW_HEIGHT-theme.TITLE_HEIGHT)/line_height)
+        WINDOW_COLUMNS = math.ceil((WINDOW_WIDTH)/font_width)
+
+        if firstTime then
+          WindowCreate(Win, windowinfo.window_left, windowinfo.window_top, WINDOW_WIDTH, WINDOW_HEIGHT, windowinfo.window_mode, windowinfo.window_flags, theme.WINDOW_BACKGROUND)
+
+          -- add the drag handler so they can move the window around
+          movewindow.add_drag_handler (Win, 0, 0, 0, theme.TITLE_HEIGHT)
+        else
+          WindowMoveHotspot(Win, "textarea", 0, theme.TITLE_HEIGHT, WINDOW_WIDTH, 0)
+        end -- if
+        WindowShow(Win, true)
+
+        refresh()
+      end  -- function init
+
+      function OnPluginClose ()
+        -- if enabled
+        if GetPluginInfo (GetPluginID(), 17) then
+          OnPluginDisable()
+        end -- if enabled
+      end -- function OnPluginClose
+
+      function OnPluginEnable ()
+        WindowShow (Win, true)
+      end -- function OnPluginEnable
+
+      function OnPluginSaveState ()
+        -- save window current location for next time
+        SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
+        movewindow.save_state (Win)
+      end -- function OnPluginSaveState
+
+      function OnPluginDisable ()
+        WindowShow( Win, false )
+      end -- function OnPluginDisable
+
+-- display one line
+function Display_Line (line, styles, backfill)
+    local left = TEXT_INSET
+    if (backfill) then
+        WindowRectOp(Win, miniwin.rect_fill, 1, theme.TITLE_HEIGHT+(line*line_height)+1, WINDOW_WIDTH, theme.TITLE_HEIGHT+(line*line_height)+line_height+1, ColourNameToRGB("#333333"))
+    end -- backfill
+    if (styles) then
+        for _, v in ipairs (styles) do
+            left = left + WindowText (Win, "bodyfont"..Win, v.text, left, theme.TITLE_HEIGHT+(line*line_height), 0, 0, v.textcolour)
+        end -- for each style run
+    end -- if
+    Redraw()
+end -- function Display_Line
+
+-- clear and redraw
+function refresh()
+    WindowRectOp(Win, miniwin.rect_fill, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, theme.WINDOW_BACKGROUND)
+    drawStuff()
+end  -- function refresh
+
+barPos = ""
+barSize = ""
+totalSteps = ""
+
+      -- TITLE BAR --
+        function drawStuff()
+          -- draw border
+          WindowRectOp (Win, miniwin.rect_frame, 0, 0, 0, 0, theme.WINDOW_BORDER)
+
+          -- Title bar
+          DrawThemed3DRect(Win, 0, 0, WINDOW_WIDTH, theme.TITLE_HEIGHT)
+
+          -- Title text
+          -- Can't find where or how to center the title bar. Did a quick hack, spaces!  lame...
+          WindowText(Win, "titlefont"..Win, "      Ansalon Bars", ((WINDOW_WIDTH)-(7.5*line_height))/2, (theme.TITLE_HEIGHT-line_height)/2, WINDOW_WIDTH, theme.TITLE_HEIGHT, theme.DETAIL, false)
+
+          Redraw()
+        end  -- function drawStuff
+      -- TITLE BAR --
+
+
+      function create_layout ()
+        -- make a miniwindow under the text
+        check (WindowCreate (health_window,                 -- window ID
+                      windowinfo.window_left + 10,          -- left (35)
+                      windowinfo.window_top + 24,           -- top (91) (+26 from previous)
+                      100,                                  -- width (fixed)
+                      20,                                   -- height (fixed)
+                      windowinfo.window_mode,               -- center it (ignored anyway)
+                      2,                                    -- (fixed)
+                      theme.WINDOW_BACKGROUND))             -- background colour
+        -- show the window
+        WindowShow (health_window, true)
+
+        -- make a miniwindow under the text
+        check (WindowCreate (mana_window,                   -- window ID
+                      windowinfo.window_left + 10,          -- left (35)
+                      windowinfo.window_top + 48,           -- top (117) (+26 from previous)
+                      100,                                  -- width (fixed)
+                      20,                                   -- height (fixed)
+                      windowinfo.window_mode,               -- center it (ignored anyway)
+                      2,                                    -- (fixed)
+                      theme.WINDOW_BACKGROUND))             -- background colour
+        -- show the window
+        WindowShow (mana_window, true)
+
+        -- make a miniwindow under the text
+        check (WindowCreate (movement_window,               -- window ID
+                      windowinfo.window_left + 10,          -- left (35)
+                      windowinfo.window_top + 72,           -- top (143) (+26 from previous)
+                      100,                                  -- width (100)
+                      20,                                   -- height (20)
+                      windowinfo.window_mode,               -- center it (ignored anyway)
+                      2,                                    -- (fixed)
+                      theme.WINDOW_BACKGROUND))             -- background colour
+        -- show the window
+        WindowShow (movement_window, true)
+
+        -- make a miniwindow under the text
+        check (WindowCreate (mob_window,                    -- window ID
+                      windowinfo.window_left + 10,          -- left (35)
+                      windowinfo.window_top + 96,           -- top (169)
+                      100,                                  -- width (100)
+                      20,                                   -- height (20)
+                      windowinfo.window_mode,               -- center it (ignored anyway)
+                      2,                                    -- (fixed)
+                      theme.WINDOW_BACKGROUND))             -- background colour
+        -- show the window
+        WindowShow (mob_window, true)
+
+        -- draw the energy bars
+        draw_energy_bars ()
+      end -- create_layout
+
+      -- fill the three energy bars
+      function draw_energy_bars ()
+
+        -- HEALTH
+        current_health = msdp["HEALTH"]
+        max_health = msdp["HEALTH_MAX"]
+
+        -- initialise with empty bars
+        if current_health == nil then
+          current_health = 0
+          max_health = 0
+        end -- if
+
+        if current_health ~= nil and max_health ~= nil then
+          type = "Health"
+          colour = 0x0000CC
+          colour2 = 0x000033
+          draw_energy_bar(type, colour, colour2, health_window, current_health, max_health)
+        end -- if
+
+
+        -- MANA
+        current_mana = msdp["MANA"]
+        max_mana = msdp["MANA_MAX"]
+
+        -- initialise with empty bars
+        if current_mana == nil then
+          current_mana = 0
+          max_mana = 0
+        end -- if
+
+        if current_mana ~= nil and max_mana ~= nil then
+          type = "Mana"
+          colour = 0xCC0000
+          colour2 = 0x330000
+          draw_energy_bar(type, colour, colour2, mana_window, current_mana, max_mana)
+        end -- if
+
+
+        -- MOVEMENT
+        current_movement = msdp["MOVEMENT"]
+        max_movement = msdp["MOVEMENT_MAX"]
+
+        -- initialise with empty bars
+        if current_movement == nil then
+          current_movement = 0
+          max_movement = 0
+        end -- if
+
+        if current_movement ~= nil and max_movement ~= nil then
+          type = "Move"
+          colour = 0x00CC00
+          colour2 = 0x003300
+          draw_energy_bar(type, colour, colour2, movement_window, current_movement, max_movement)
+        end -- if
+
+        -- MOB HEALTH
+        current_exp = msdp["OPPONENT_HEALTH"]
+        max_exp = 100
+
+        -- initialise with empty bars
+        if current_exp == nil then
+          current_exp = 0
+          max_exp = 0
+        end -- if
+
+        if current_exp ~= nil and max_exp ~= nil then
+          type = "Enemy"
+          colour = 0x00CCCC
+          colour2 = 0x003333
+          draw_energy_bar(type, colour, colour2, mob_window, current_exp, max_exp)
+        end -- if
+      end -- draw_energy_bars
+
+      -- fill the bar
+      function draw_energy_bar (type, colour, colour2, window, current_value, max_value)
+
+        -- convert the strings to numbers
+        current = tonumber(current_value)
+        max = tonumber(max_value)
+
+        -- Calculate health
+        if current < 0 then
+          current = 0
+        elseif current > max then
+          current = max
+        end -- if
+
+        -- clear the bars
+        WindowGradient (window, 0, -1, 100, 10, colourBlack, colour2, 2)
+        WindowGradient (window, 0, 10, 100, 21, colour2, colourBlack, 2)
+
+        -- calculate the filled part
+        if max > 0 then
+          filled = current * 100 / max
+        else -- avoid division by zero
+          filled = 0
+        end -- if
+
+        -- redraw the bars
+        if current > 0 then
+          WindowGradient (window, 0, -1, filled, 10, colourBlack, colour, 2)
+          WindowGradient (window, 0, 10, filled, 21, colour, colourBlack, 2)
+        end -- if
+
+        -- write the information inside
+        outlined_text (colourGold, window, type, 9, 3, 3, 0)
+        outlined_text (colourGold, window, math.ceil(filled)..'%', 9, 55, 3, 0)
+      end -- draw_energy_bar
+
+      function outlined_text (colour, window, text, size, x, y, centre_width)
+
+        outlineColour = colourBlack
+
+        -- write the information inside
+        WindowFont(window,'f','Verdana',size,1,0,0,0)
+
+        if centre_width > 0 then
+          width = WindowTextWidth (window, 'f', text)
+          x = x + ((centre_width-width) / 2)
+        end -- if
+
+        -- smear black text around the location to create an outline, so that it's clearer to read
+        WindowText(window,'f',text,x+1,y+1,0,0,outlineColour,0)
+        WindowText(window,'f',text,x+1,y,0,0,outlineColour,0)
+        WindowText(window,'f',text,x+1,y-1,0,0,outlineColour,0)
+        WindowText(window,'f',text,x,y+1,y,0,outlineColour,0)
+        WindowText(window,'f',text,x,y-1,y,0,outlineColour,0)
+        WindowText(window,'f',text,x-1,y+1,0,0,outlineColour,0)
+        WindowText(window,'f',text,x-1,y,0,0,outlineColour,0)
+        WindowText(window,'f',text,x-1,y-1,0,0,outlineColour,0)
+
+        -- display the text
+        WindowText(window,'f',text,x,y,0,0,colour,0)
+
+        return width
+      end -- outlined_text
+
+
+
+
+
+
+      -- MSDP negotiation
+        local MSDP = 69
+
+        function OnPluginTelnetRequest (type, data)
+          if type == MSDP and data == "WILL" then
+            using_msdp = true
+            return true
+          elseif type == MSDP and data == "SENT_DO" then
+            -- IAC SB MSDP response IAC SE
+            SendPkt ("\255\250\69\1REPORT\2HEALTH_MAX\2HEALTH\2MANA_MAX\2MANA\2MOVEMENT_MAX\2MOVEMENT\2OPPONENT_HEALTH\2\255\240")
+            return true
+          else -- another protocol
+            return false
+          end -- if
+        end -- function OnPluginTelnetRequest
+
+        function OnPluginTelnetSubnegotiation (type, data)
+          if type == MSDP then
+            endpos=string.len(data)
+            for i=endpos,1,-1 do
+              if string.byte(data,i) == 1 then
+                variable = string.sub(data,i+1,endpos)
+                StoreVariable(variable, value)
+                endpos = i-1
+              elseif string.byte(data,i) == 2 then
+                value = string.sub(data,i+1,endpos)
+                endpos = i-1
+              end -- if
+            end -- for
+
+            -- redraw the energy bars
+            draw_energy_bars ()
+
+            Redraw()
+
+          end -- if
+        end -- function OnPluginTelnetSubnegotiation
+
+        function StoreVariable (MSDP_var, MSDP_val)
+        --Note('Variable: '..MSDP_var..' = '..MSDP_val)
+          if MSDP_var == "SERVER_ID" then
+            create_layout ()
+            SendPkt ("\255\250\69\1PLUGIN_ID\2Ansalon MUSHclient plugin (version 1.0)\255\240")
+          else -- store the variable
+            msdp[MSDP_var] = MSDP_val
+          end -- if
+        end -- function StoreVariable
+      -- MSDP negotiation
+    ]]>
+  </script>
+</muclient>
