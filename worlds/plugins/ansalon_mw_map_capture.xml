@@ -10,6 +10,7 @@
 
 <!--Contributors>
   * Paladine
+  * Zivilyn
   * Ansalon
   * gameshogun/techmagus
 </Contributors-->
@@ -23,8 +24,8 @@
     save_state="y"
     date_written="2010-11-20"
     date_modified="2015-10-02"
-    requires="4.99"
-    version="2.3"
+    requires="4.61"
+    version="2.35"
     id="a2d4ee0794d1f188d0a2739b"
     >
     <description trim="y"><![CDATA[
@@ -35,6 +36,7 @@
         maps show       : show maps window
         maps hide       : hide maps window
 
+        LH-click to copy a single line
         RH-click main window to see menu of options
 
         Click title bar to drag window.
@@ -191,7 +193,7 @@
       font_width = WindowTextWidth (Win, "bodyfont"..Win, "W")
 
       -- install the window movement handler, get back the window position
-      windowinfo = movewindow.install (Win, miniwin.pos_top_right, 0, true)
+      windowinfo = movewindow.install (Win, miniwin.pos_center_all, 0, true)
 
       -- check for Echo/window size (in pixels) variables, if not there, set them
       if WINDOW_WIDTH == nil then
