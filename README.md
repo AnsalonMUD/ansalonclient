@@ -11,13 +11,16 @@ Scripts and plugin collection for the **AnsalonMUD** MUSHclient.
 ## Important Links
 * [AnsalonMUD](http://ansalonmud.net "Official Website")
 
-## Plugins
-* Ansalon_MW_Chat_Capture (ansalon_mw_chat_capture.xml): Capture chats to display in a dedicated chat window.
-* Ansalon_MW_Expbar_Prompt (ansalon_mw_expbar_prompt.xml): A bottom experience bar based on your prompt setup.
-* Ansalon_MW_Map_Capture (ansalon_mw_map_capture.xml): Captures the map and display in a dedicated map window.
-* Ansalon_MW_Spam_Capture (ansalon_mw_spam_capture.xml)
-* Ansalon_MW_Statusbar_MSDP_v1 (ansalon_mw_statusbar_msdp_v1.xml): Statusbar found in Ansalon_GUI as a stand-alone plugin.
-* Hyperlink_URL2 (Hyperlink_URL2.xml): Makes URLs clickable.
+## Downloads
+Right-click and 'Save As' to download
+
+* [Download All](https://github.com/AnsalonMUD/ansalonclient/archive/master.zip)
+** [Ansalon_MW_Chat_Capture](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_chat_capture.xml): Capture chats to display in a dedicated chat window.
+** [Ansalon_MW_Expbar_Prompt](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_expbar_prompt.xml): A bottom experience bar based on your prompt setup.
+** [Ansalon_MW_Map_Capture](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_map_capture.xml): Captures the map and display in a dedicated map window.
+** [Ansalon_MW_Spam_Capture](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_spam_capture.xml)
+** [Ansalon_MW_Statusbar_MSDP_v1](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_statusbar_msdp_v1.xml): Statusbar found in Ansalon_GUI as a stand-alone plugin.
+** [Hyperlink_URL2](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/Hyperlink_URL2.xml): Makes URLs clickable.
 
 ## Planned Plugins
 ### Work-In-Progress
