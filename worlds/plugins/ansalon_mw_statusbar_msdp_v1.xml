@@ -8,6 +8,7 @@
 
 <!--Contributors>
   * Paladine
+  * Zivilyn
   * Ansalon
   * gameshogun/techmagus
 </Contributors-->
@@ -21,8 +22,8 @@
     save_state="y"
     date_written="2015-10-01"
     date_modified="2015-10-02"
-    requires="4.99"
-    version="1.0"
+    requires="4.61"
+    version="1.00"
     id="37b874cf5001a4da5137760c"
     >
     <description trim="y"><![CDATA[
