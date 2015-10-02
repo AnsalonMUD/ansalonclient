@@ -6,6 +6,7 @@ Scripts and plugin collection for the **AnsalonMUD** MUSHclient.
 ## Project Details
 * 5 independent plugins
 * Gitrepo created on: 2015-10-01
+* For MUSHclient v4.99 - [click here](http://www.gammon.com.au/forum/bbshowpost.php?bbtopic_id=1) to download the latest version.
 
 ## Important Links
 * [AnsalonMUD](http://ansalonmud.net "Official Website")
