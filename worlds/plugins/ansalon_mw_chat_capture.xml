@@ -11,7 +11,7 @@
 <!--Contributors>
   * Paladine
   * Ansalon
-  * Skol
+  * Skag
   * gameshogun/techmagus
 </Contributors-->
 
@@ -141,6 +141,16 @@
     sequence="100"
     ></trigger>
 
+    <!-- TELL -->
+    <trigger
+    enabled="y"
+    match="(?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
+    regexp="y"
+    script="chats"
+    omit_from_output="y"
+    sequence="100"
+    ></trigger>
+
     <!-- TELL REPLY -->
     <trigger
     enabled="y"
@@ -243,6 +253,24 @@
     regexp="y"
     script="chats"
     omit_from_output="y"
+    ></trigger>
+
+    <!-- NEWBIE TALK -->
+    <trigger
+    enabled="y"
+    match="* Newbietalks '*'"
+    script="chats"
+    omit_from_output="y"
+    sequence="100"
+    ></trigger>
+
+    <!-- NEWBIE TALK -->
+    <trigger
+    enabled="y"
+    match="You Newbietalk '*'"
+    script="chats"
+    omit_from_output="y"
+    sequence="100"
     ></trigger>
 
     <!-- Catch-All -->
