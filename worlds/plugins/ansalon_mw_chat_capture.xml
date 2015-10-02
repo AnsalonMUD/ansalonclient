@@ -102,6 +102,16 @@
     sequence="100"
     ></trigger>
 
+    <!-- SAY -->
+    <trigger
+    enabled="y"
+    match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
+    regexp="y"
+    script="chats"
+    omit_from_output="y"
+    sequence="100"
+    ></trigger>
+
     <!-- TELL -->
     <trigger
     enabled="y"
@@ -115,6 +125,16 @@
     <trigger
     enabled="y"
     match="(?P<trash>.*) (?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
+    regexp="y"
+    script="chats"
+    omit_from_output="y"
+    sequence="100"
+    ></trigger>
+
+    <!-- TELL -->
+    <trigger
+    enabled="y"
+    match="(?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
     regexp="y"
     script="chats"
     omit_from_output="y"
