@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE muclient [
-  <!ENTITY trigger_match  "[*/* */* */* * | *" >
+  <!ENTITY trigger_match  "^\[\-?(\d+)\/(\d+) \-?(\d+)\/(\d+) \-?(\d+)\/(\d+) (?P<axp>\d+) (.*?)$" >
 ]>
 
 <!--History>
-  * Based on Nick Gammon's "Experience Bar" plugin
+  * Based on Nick Gammon "Experience Bar" plugin
 </History-->
 
 <!--Contributors>
@@ -21,7 +21,7 @@
     date_written="2015-09-30"
     date_modified="2015-10-02"
     requires="4.99"
-    version="1.0"
+    version="1.02"
     id="62a3dfc07c5b023272af5e6e"
     >
     <description trim="y"><![CDATA[
@@ -43,6 +43,7 @@
     <trigger
       enabled="y"
       match="&trigger_match;"
+      regexp="y"
       script="do_prompt"
       sequence="100"
     ></trigger>
@@ -143,13 +144,12 @@
       -- CHANGE HERE if your prompt is different (eg. different wildcard numbers)
 
       -- ***If your prompt shows your current EXP gained, then uncomment the next two lines (and comment the next 3 lines) ***
-      -- current_xp = tonumber (wildcards [7])
-      -- max_xp = tonumber (wildcards [8])  + (current_xp or 0)
+--      current_xp = tonumber (wildcards [7])
+--      max_xp = tonumber (wildcards [8]) + (current_xp or 0)
 
       -- *** If your prompt shows "tnl" EXP, uncomment the next three lines (and comment the 2 lines above) ***
-      fxp = 15200 -- do not forget to update this to your character's fixed EXP to level
-      current_xp = tonumber (fxp) - (wildcards [7])
-      max_xp = tonumber (fxp)
+      max_xp = 15200 -- do not forget to update this to your character's fixed EXP to level
+      current_xp = max_xp - tonumber (wildcards.axp)
 
       draw_bar ()
     end -- do_prompt
