@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE muclient [
+  <!ENTITY trigger_match
+   "^\[(\d+)\/(\d+) (\d+)\/(\d+) (\d+)\/(\d+) (.*?)$" >
+]>
+
+<!--NOTICE>
+  WORK-IN-PROGRESS
+
+  Idea: Draw the MSDP-based status bar in the miniwindow itself (see: ansalon_mw_statusbar_msdp_v1 for comparison)
+</NOTICE-->
+
+<!--History>
+  * Based on Health_Bar_Miniwindow by Nick Gammon
+</History-->
+
+<!--Contributors>
+  * Ansalon
+  * gameshogun/techmagus
+</Contributors-->
+
+<muclient>
+  <plugin
+    name="Ansalon_MW_Statusbar_MSDP_v2"
+    author="Ansalon"
+    language="Lua"
+    purpose="Shows stats in a mini window"
+    save_state="y"
+    date_written="2015-10-02"
+    date_modified="2015-10-02"
+    requires="4.99"
+    version="2.0"
+    id="95802c46f5890447a14a07ca"
+    >
+    <description trim="y"><![CDATA[
+      WORK-IN-PROGRESS
+
+      Install this plugin to show an info bar with HP, Mana,
+      and Movement points shown as a bar.
+
+      The window can be dragged to a new location with the mouse.
+    ]]></description>
+  </plugin>
+
+  <script><![CDATA[
+    local using_msdp = false
+    local msdp = {}
+
+    GAUGE_LEFT = 55
+    GAUGE_HEIGHT = 15
+
+    WINDOW_WIDTH = 250
+    WINDOW_HEIGHT = 75
+    NUMBER_OF_TICKS = 5
+
+    BACKGROUND_COLOUR = ColourNameToRGB "rosybrown"
+    FONT_COLOUR = ColourNameToRGB "darkred"
+    BORDER_COLOUR = ColourNameToRGB "#553333"
+
+    function mousedown(flags, hotspot_id)
+      -- find where mouse is so we can adjust window relative to mouse
+      startx, starty = WindowInfo (win, 14), WindowInfo (win, 15)
+
+      -- find where window is in case we drag it offscreen
+      origx, origy = WindowInfo (win, 10), WindowInfo (win, 11)
+    end -- mousedown
+
+    function dragmove(flags, hotspot_id)
+      -- find where it is now
+      local posx, posy = WindowInfo (win, 17),
+                         WindowInfo (win, 18)
+
+      -- move the window to the new location
+      WindowPosition(win, posx - startx, posy - starty, 0, 2);
+
+      -- change the mouse cursor shape appropriately
+      if posx < 0 or posx > GetInfo (281) or
+         posy < 0 or posy > GetInfo (280) then
+        check (SetCursor ( 11))   -- X cursor
+      else
+        check (SetCursor ( 1))   -- hand cursor
+      end -- if
+    end -- dragmove
+
+    function dragrelease(flags, hotspot_id)
+      local newx, newy = WindowInfo (win, 17), WindowInfo (win, 18)
+
+      -- don't let them drag it out of view
+      if newx < 0 or newx > GetInfo (281) or
+         newy < 0 or newy > GetInfo (280) then
+         -- put it back
+        WindowPosition(win, origx, origy, 0, 2);
+      end -- if out of bounds
+    end -- dragrelease
+
+    function DoGauge (sPrompt, Percent, Colour)
+      local Fraction = tonumber (Percent)
+
+      if Fraction > 1 then Fraction = 1 end
+      if Fraction < 0 then Fraction = 0 end
+
+      local width = WindowTextWidth (win, font_id, sPrompt)
+
+      WindowText (win, font_id, sPrompt,
+                                 GAUGE_LEFT - width, vertical, 0, 0, FONT_COLOUR)
+
+      WindowRectOp (win, 2, GAUGE_LEFT, vertical, WINDOW_WIDTH - 5, vertical + GAUGE_HEIGHT,
+                              BACKGROUND_COLOUR)  -- fill entire box
+
+      local gauge_width = (WINDOW_WIDTH - GAUGE_LEFT - 5) * Fraction
+
+       -- box size must be > 0 or WindowGradient fills the whole thing
+      if math.floor (gauge_width) > 0 then
+
+        -- top half
+        WindowGradient (win, GAUGE_LEFT, vertical, GAUGE_LEFT + gauge_width, vertical + GAUGE_HEIGHT / 2,
+                        0x000000,
+                        Colour, 2)
+
+        -- bottom half
+        WindowGradient (win, GAUGE_LEFT, vertical + GAUGE_HEIGHT / 2,
+                        GAUGE_LEFT + gauge_width, vertical +  GAUGE_HEIGHT,
+                        Colour,
+                        0x000000,
+                        2)
+      end -- non-zero
+
+      -- show ticks
+      local ticks_at = (WINDOW_WIDTH - GAUGE_LEFT - 5) / (NUMBER_OF_TICKS)
+
+      -- ticks
+      for i = 1, NUMBER_OF_TICKS do
+        WindowLine (win, GAUGE_LEFT + (i * ticks_at), vertical,
+                    GAUGE_LEFT + (i * ticks_at), vertical + GAUGE_HEIGHT, ColourNameToRGB ("silver"), 0, 1)
+      end -- for
+
+      -- draw a box around it
+      check (WindowRectOp (win, 1, GAUGE_LEFT, vertical, WINDOW_WIDTH - 5, vertical + GAUGE_HEIGHT,
+              ColourNameToRGB ("lightgrey")))  -- frame entire box
+
+      vertical = vertical + font_height + 3
+    end -- function
+
+    function do_prompt ()
+      local hp = msdp["HEALTH"]
+      local max_hp = msdp["HEALTH_MAX"]
+
+      hp = tonumber(current_value)
+      max_hp = tonumber(max_value)
+      mana = tonumber(current_value)
+      max_mana = tonumber(max_value)
+      move = tonumber(current_value)
+      max_move = tonumber(max_value)
+
+      Note(hp)
+      Note(max_hp)
+      Note(mana)
+      Note(max_mana)
+      Note(move)
+      Note(max_move)
+
+      local hp_percent = hp / max_hp
+      local mana_percent = mana / max_mana
+      local move_percent = move / max_move
+
+      -- fill entire box to clear it
+      check (WindowRectOp (win, 2, 0, 0, 0, 0, BACKGROUND_COLOUR))  -- fill entire box
+
+      -- Edge around box rectangle
+      check (WindowCircleOp (win, 3, 0, 0, 0, 0, BORDER_COLOUR, 0, 2, 0, 1))
+
+      vertical = 6  -- pixel to start at
+
+      DoGauge ("HP: ",   hp_percent,    ColourNameToRGB "darkgreen")
+      DoGauge ("Mana: ", mana_percent,  ColourNameToRGB "mediumblue")
+      DoGauge ("Move: ", move_percent,  ColourNameToRGB "gold")
+
+      WindowShow (win, true)
+    end -- draw_bar
+
+
+    function create_layout ()
+      -- draw the energy bars
+      draw_energy_bars ()
+    end -- create_layout
+
+
+    -- fill the three energy bars
+    function draw_energy_bars ()
+
+      -- HEALTH
+      hp = msdp["HEALTH"]
+      max_hp = msdp["HEALTH_MAX"]
+
+      -- initialise with empty bars
+      if hp == nil then
+        hp = 0
+        max_hp = 0
+      end -- if
+
+      -- MANA
+      mana = msdp["MANA"]
+      max_mana = msdp["MANA_MAX"]
+
+      -- initialise with empty bars
+      if mana == nil then
+        mana = 0
+        max_mana = 0
+      end -- if
+
+      -- MOVEMENT
+      move = msdp["MOVEMENT"]
+      max_move = msdp["MOVEMENT_MAX"]
+
+      -- initialise with empty bars
+      if move == nil then
+        move = 0
+        max_move = 0
+      end -- if
+
+      hp = tonumber(current_value)
+      max_hp = tonumber(max_value)
+      mana = tonumber(current_value)
+      max_mana = tonumber(max_value)
+      move = tonumber(current_value)
+      max_move = tonumber(max_value)
+
+      Note(hp)
+      Note(max_hp)
+      Note(mana)
+      Note(max_mana)
+      Note(move)
+      Note(max_move)
+    end -- draw_energy_bars
+
+
+
+    function OnPluginInstall ()
+      win = GetPluginID ()
+      font_id = "fn"
+
+      font_name = "Fixedsys"    -- the actual font
+
+      local x, y, mode, flags =
+          tonumber (GetVariable ("windowx")) or 0,
+          tonumber (GetVariable ("windowy")) or 0,
+          tonumber (GetVariable ("windowmode")) or 8, -- bottom right
+          tonumber (GetVariable ("windowflags")) or 0
+
+      -- make miniwindow so I can grab the font info
+      check (WindowCreate (win,
+                     x, y, WINDOW_WIDTH, WINDOW_HEIGHT,
+                     mode,
+                     flags,
+                     BACKGROUND_COLOUR) )
+
+      -- make a hotspot
+      WindowAddHotspot(win, "hs1",
+                       0, 0, 0, 0,   -- whole window
+                       "",   -- MouseOver
+                       "",   -- CancelMouseOver
+                       "mousedown",
+                       "",   -- CancelMouseDown
+                       "",   -- MouseUp
+                       "Drag to move",  -- tooltip text
+                       1, 0)  -- hand cursor
+
+      WindowDragHandler(win, "hs1", "dragmove", "dragrelease", 0)
+
+      check (WindowFont (win, font_id, font_name, 9, false, false, false, false, 0, 0))  -- normal
+
+      font_height = WindowFontInfo (win, font_id, 1)  -- height
+
+      if GetVariable ("enabled") == "false" then
+        ColourNote ("yellow", "", "Warning: Plugin " .. GetPluginName ().. " is currently disabled.")
+        check (EnablePlugin(GetPluginID (), false))
+        return
+      end -- they didn't enable us last time
+    end -- OnPluginInstall
+
+    function OnPluginDisable ()
+      WindowShow (win, false)
+    end -- OnPluginDisable
+
+    function OnPluginSaveState ()
+      SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID (), 17)))
+      SetVariable ("windowx", tostring (WindowInfo (win, 10)))
+      SetVariable ("windowy", tostring (WindowInfo (win, 11)))
+      SetVariable ("windowmode", tostring (WindowInfo (win, 7)))
+      SetVariable ("windowflags", tostring (WindowInfo (win, 8)))
+    end -- OnPluginSaveState
+
+    -- MSDP negotiation
+    local MSDP = 69
+
+    function OnPluginTelnetRequest (type, data)
+      if type == MSDP and data == "WILL" then
+        using_msdp = true
+        return true
+      elseif type == MSDP and data == "SENT_DO" then
+        -- IAC SB MSDP response IAC SE
+        SendPkt ("\255\250\69\1REPORT\2HEALTH_MAX\2HEALTH\2MANA_MAX\2MANA\2MOVEMENT_MAX\2MOVEMENT\2OPPONENT_HEALTH\2\255\240")
+        return true
+      else -- another protocol
+        return false
+      end -- if
+    end -- function OnPluginTelnetRequest
+
+    function OnPluginTelnetSubnegotiation (type, data)
+      if type == MSDP then
+        endpos=string.len(data)
+        for i=endpos,1,-1 do
+          if string.byte(data,i) == 1 then
+            variable = string.sub(data,i+1,endpos)
+            StoreVariable(variable, value)
+            endpos = i-1
+          elseif string.byte(data,i) == 2 then
+            value = string.sub(data,i+1,endpos)
+            endpos = i-1
+          end -- if
+        end -- for
+
+        draw_energy_bars ()
+        Redraw()
+
+      end -- if
+    end -- function OnPluginTelnetSubnegotiation
+
+    function StoreVariable (MSDP_var, MSDP_val)
+    Note('Variable: '..MSDP_var..' = '..MSDP_val)
+      if MSDP_var == "SERVER_ID" then
+        create_layout ()
+        SendPkt ("\255\250\69\1PLUGIN_ID\2Ansalon MUSHclient plugin (version 1.0)\255\240")
+      else -- store the variable
+        msdp[MSDP_var] = MSDP_val
+      end -- if
+    end -- function StoreVariable
+    -- MSDP negotiation
+  ]]></script>
+</muclient>
