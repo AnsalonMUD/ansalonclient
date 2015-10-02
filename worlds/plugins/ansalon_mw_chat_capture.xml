@@ -727,17 +727,34 @@
       table.insert(rawlines, styles)
 
       --[[
-        What we're looking for: {trash names} {sname} says
-        Example: A hireling thief says
-          Match: thief
+        I. sname
+          What we're looking for: {trash names} {sname} says
+          Example: A hireling thief says
+            Match: thief
 
-        How to add new ones:
-          1. Insert a new line above: sname == "insert-above" then
-            e.g. sname == "warrior" or
+          How to add new ones:
+            1. Insert a new line above: sname == "insert-above" then
+              e.g. sname == "warrior" or
+
+        II. smsg
+          String matching, useful for long strings like tells from store NPCs
+
+          How to add new ones:
+            1. Insert a new line after the last smsg line with the following:
+                  string.match (smsg, "YOUR-STRING-MATCH") or
+              *** Don't forget to change "YOUR-STRING-MATCH" ***
+              e.g. string.match (smsg, "You can't afford to buy")
+                ** Will match anything with that string. **
+
+        III. Notes
+          The code below relies on the triggers at the beginning of this file (see <triggers>).
+          It usually has to be a regular expression (regex/regexp), see these examples:
+            a. Search: <!-- SAY --> or <!-- TELL --> at the beginning of this file
+            b. Look for the line that begins with "match", you'll see a regexp.
       --]]
       local sname = wildcards.sname
       local smsg = wildcards.smsg
-      Note(smsg)
+      local smsg = smsg or ""             -- prevents smsg from being nil
       if string.match (smsg, "You can't afford to buy") or
          string.match (smsg, "You don't have that item.") or
          sname == "mercenary" or
@@ -762,7 +779,7 @@
         Note ("")  -- wrap up line
       else
         fillBuffer(styles)
-      end
+      end -- if "uncapture"
       refresh( )
     end -- function chats
 
