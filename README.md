@@ -34,7 +34,7 @@ Scripts and plugin collection for the **AnsalonMUD** MUSHclient.
 ## Contributors
 * Zivilyn - Ansalon IMP
 * Paladine - Ansalon IMP
-* Skol
+* Skag
 * Teague
 * "Ansalon" (the name you'll mostly find as an author in most of our plugins)
-* gameshogun/techmagus
+* gameshogun/techmagus (IGN: Amyrei)
