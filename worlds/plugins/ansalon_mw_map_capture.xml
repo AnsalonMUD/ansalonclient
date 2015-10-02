@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE muclient>
+
+<!--History>
+  * Adapated by Nick Gammon for Smaug and similar MUDs
+  * Bits of this plugin and ideas were borrowed and remixed from the MUSHclient community. http://www.gammon.com.au/forum/?id=9385 and others.
+  * Modifications for Aardwolf and extra awesome sauce added by Fiendish with help from Orogan
+  * Modifications for Ansalon MUD (ansalonmud.com 8679) added by Paladine
+</History-->
+
+<!--Contributors>
+  * Paladine
+  * Ansalon
+  * gameshogun/techmagus
+</Contributors-->
+
+<muclient>
+  <plugin
+    name="Ansalon_MW_Map_Capture"
+    author="Ansalon"
+    language="Lua"
+    purpose="Move automapper to a miniwindow"
+    save_state="y"
+    date_written="2010-11-20"
+    date_modified="2015-10-02"
+    requires="4.99"
+    version="2.3"
+    id="a2d4ee0794d1f188d0a2739b"
+    >
+    <description trim="y"><![CDATA[
+      USAGE:
+
+        maps echo on    : echo maps in main window
+        maps echo off   : do not echo maps
+        maps show       : show maps window
+        maps hide       : hide maps window
+
+        RH-click main window to see menu of options
+
+        Click title bar to drag window.
+    ]]></description>
+  </plugin>
+
+  <triggers>
+    <!-- trigger to match start of automapper -->
+    <trigger
+      enabled="y"
+      match="<STARTMAP>*"
+      send_to="12"
+      omit_from_output="y"
+      sequence="100"
+      >
+      <send>
+        inventory_table = {}
+        EnableTrigger ("mapper_line", true)
+        EnableTrigger ("mapper_stopper", true)
+      </send>
+    </trigger>
+
+    <!-- trigger to match an automapper line -->
+    <trigger
+      match="*"
+      name="mapper_line"
+      send_to="12"
+      sequence="50"
+      script="map"
+      omit_from_output="y"
+    ></trigger>
+
+    <!-- trigger to match end of automapper -->
+    <trigger
+      match="<ENDMAP>"
+      name="mapper_stopper"
+      send_to="12"
+      omit_from_output="y"
+      sequence="40"
+      >
+      <send>
+        -- don't need to track automapper any more
+        EnableTrigger ("mapper_line", false)
+        EnableTrigger ("mapper_stopper", false)
+      </send>
+    </trigger>
+  </triggers>
+
+  <aliases>
+    <alias
+    script="map_echo"
+    match="^maps echo( on| off)?$"
+    enabled="y"
+    regexp="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+
+    <alias
+    script="map_show"
+    match="maps show"
+    enabled="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+
+    <alias
+    script="map_hide"
+    match="maps hide"
+    enabled="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+  </aliases>
+
+  <script><![CDATA[
+    require "movewindow"  -- load the movewindow.lua module
+    require "copytable"
+
+    BODY_FONT_NAME = "FixedSys"
+    BODY_FONT_SIZE = 8
+
+    -- doing it this way makes them default to true the first time around
+    echo = not (GetVariable("echo") == "false")
+
+    --[[
+      Minimum WINDOW_WIDTH and maximum TEXT_INSET are connected. Example:
+        * If WINDOW_WIDTH is 285, then TEXT_INSET can only be as high as 10.
+        * If TEXT_INSET is 5, then WINDOW_WIDTH can only be as low as 275.
+    --]]
+    TEXT_INSET = 0         -- offset of text from edge
+    WINDOW_WIDTH = 265
+    WINDOW_HEIGHT = 285
+
+    -- where to store the map line
+    lines = {}  -- table of recent map lines
+    rawlines = {}
+
+    lineStart = ""
+    lineEnd = ""
+    WINDOW_COLUMNS = ""
+    WINDOW_LINES = ""
+
+    theme = {
+      WINDOW_BACKGROUND = ColourNameToRGB ("#000000"), -- for miniwindow body
+      WINDOW_BORDER = ColourNameToRGB("#E8E8E8"), -- for miniwindow body
+
+      HIGHLIGHT=ColourNameToRGB("#FFFFFF"), -- for 3D surfaces
+      FACE=ColourNameToRGB("#D4D0C8"), -- for 3D surfaces
+      INNERSHADOW=ColourNameToRGB("#808080"), -- for 3D surfaces
+      OUTERSHADOW = ColourNameToRGB("#404040"), -- for 3D surfaces
+
+      BACK_FACE = ColourNameToRGB ("#E8E8E8"), -- for contrasting details
+      DETAIL = ColourNameToRGB ("#000000"), -- for contrasting details
+
+      TITLE_HEIGHT = 17, -- for miniwindow title area
+      SUBTITLE_HEIGHT = 17, -- for miniwindow title area
+      TITLE_FONT_NAME = "Dina", -- for miniwindow title area
+      TITLE_FONT_SIZE = 8 -- for miniwindow title area
+    }  -- end theme table
+
+    -- replacement for WindowRectOp action 5, which allows for a 3D look while maintaining color theme
+    -- Requires global theme.HIGHLIGHT, theme.FACE, theme.INNERSHADOW, and theme.OUTERSHADOW rgb colors to be set.
+    function DrawThemed3DRect(Window, left, top, right, bottom)
+      WindowRectOp(Window, miniwin.rect_fill, left, top, right, bottom, theme.FACE)
+      WindowLine(Window, left, top, right, top, theme.HIGHLIGHT,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, top, left, bottom, theme.HIGHLIGHT,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, bottom-2, right, bottom-2, theme.INNERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, right-2, top, right-2, bottom-2, theme.INNERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, bottom-1, right, bottom-1, theme.OUTERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, right-1, top, right-1, bottom-1, theme.OUTERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+    end
+
+    Win = GetPluginID()
+    font_height = ""
+    line_height = ""
+    windowinfo = ""
+    startx = ""
+    starty = ""
+
+    function OnPluginInstall()
+      -- Dummy window to get font characteristics
+      check (WindowCreate (Win, 0, 0, 1, 1, 0, 0, theme.WINDOW_BACKGROUND) )
+      check (WindowFont(Win, "bodyfont"..Win, BODY_FONT_NAME, BODY_FONT_SIZE))
+      check (WindowFont(Win, "titlefont"..Win, theme.TITLE_FONT_NAME, theme.TITLE_FONT_SIZE))
+      font_height = WindowFontInfo (Win, "bodyfont"..Win, 1) -  WindowFontInfo (Win, "bodyfont"..Win, 4) + 1
+      line_height = font_height+1
+      font_width = WindowTextWidth (Win, "bodyfont"..Win, "W")
+
+      -- install the window movement handler, get back the window position
+      windowinfo = movewindow.install (Win, miniwin.pos_top_right, 0, true)
+
+      -- check for Echo/window size (in pixels) variables, if not there, set them
+      if WINDOW_WIDTH == nil then
+          WINDOW_WIDTH = (font_width*80) -- 80 columns
+      end
+      if WINDOW_HEIGHT == nil then
+          WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*6)+2 -- 6 lines
+      end -- if
+      init(true)
+      OnPluginEnable ()  -- do initialization stuff
+    end -- function OnPluginInstall
+
+    function init(firstTime)
+      -- how many lines and columns will fit?
+      WINDOW_LINES = math.ceil((WINDOW_HEIGHT-theme.TITLE_HEIGHT)/line_height)
+      WINDOW_COLUMNS = math.ceil((WINDOW_WIDTH)/font_width)
+
+      if firstTime then
+        WindowCreate(Win, windowinfo.window_left, windowinfo.window_top, WINDOW_WIDTH, WINDOW_HEIGHT, windowinfo.window_mode, windowinfo.window_flags, theme.WINDOW_BACKGROUND)
+
+        -- catch for right-click menu and line selection
+        WindowAddHotspot(Win, "textarea", 0, theme.TITLE_HEIGHT, WINDOW_WIDTH,0,
+            "", "", "MouseDown", "CancelMouseDown", "MouseUp", "",
+            miniwin.cursor_ibeam, 0)
+        -- add the drag handler so they can move the window around
+        movewindow.add_drag_handler (Win, 0, 0, 0, theme.TITLE_HEIGHT)
+      else
+        WindowMoveHotspot(Win, "textarea", 0, theme.TITLE_HEIGHT, WINDOW_WIDTH, 0)
+      end -- if
+      WindowShow(Win, true)
+
+      if (firstTime == true) then
+        lines = {}
+        for _,styles in ipairs(rawlines) do
+          fillBuffer(styles)
+        end  -- for each line
+      end -- if
+
+      lineStart = math.max(1, #lines-WINDOW_LINES+2)
+      lineEnd = math.max(1, #lines)
+      refresh()
+    end  -- function init
+
+    function OnPluginClose ()
+      -- if enabled
+      if GetPluginInfo (GetPluginID(), 17) then
+        OnPluginDisable()
+      end -- if enabled
+    end -- function OnPluginClose
+
+    function OnPluginEnable ()
+      echo = false
+      WindowShow (Win, true)
+    end -- function OnPluginEnable
+
+    function OnPluginSaveState ()
+      -- save window current location for next time
+      SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
+      movewindow.save_state (Win)
+      -- save echo status
+      SetVariable ("echo", tostring (echo))
+    end -- function OnPluginSaveState
+
+    function OnPluginDisable ()
+      WindowShow( Win, false )
+    end -- function OnPluginDisable
+
+    -- display one line
+    function Display_Line (line, styles, backfill)
+      local left = TEXT_INSET
+      if (backfill) then
+        WindowRectOp(Win, miniwin.rect_fill, 1, theme.TITLE_HEIGHT+(line*line_height)+1, WINDOW_WIDTH, theme.TITLE_HEIGHT+(line*line_height)+line_height+1, ColourNameToRGB("#333333"))
+      end -- backfill
+      if (styles) then
+        for _, v in ipairs (styles) do
+          left = left + WindowText (Win, "bodyfont"..Win, v.text, left, theme.TITLE_HEIGHT+(line*line_height), 0, 0, v.textcolour)
+        end -- for each style run
+      end -- if
+      Redraw()
+    end -- function Display_Line
+
+    -- display all visible lines
+    function writeLines()
+      for count = lineStart, lineEnd do
+        Display_Line( count-lineStart, lines[count][1], false )
+      end  -- for each line
+    end  -- function writeLines
+
+    -- clear and redraw
+    function refresh()
+      WindowRectOp(Win, miniwin.rect_fill, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, theme.WINDOW_BACKGROUND)
+      drawStuff()
+    end  -- function refresh
+
+    barPos = ""
+    barSize = ""
+    totalSteps = ""
+
+    function drawStuff()
+      -- draw border
+      WindowRectOp (Win, miniwin.rect_frame, 0, 0, 0, 0, theme.WINDOW_BORDER)
+
+      -- Title bar
+      DrawThemed3DRect(Win, 0, 0, WINDOW_WIDTH, theme.TITLE_HEIGHT)
+
+      -- Title text
+      WindowText(Win, "titlefont"..Win, "Ansalon Automapper", ((WINDOW_WIDTH)-(7.5*line_height))/2, (theme.TITLE_HEIGHT-line_height)/2, WINDOW_WIDTH, theme.TITLE_HEIGHT, theme.DETAIL, false)
+
+      if #lines >= 1 then
+        writeLines()
+      end -- if
+
+      Redraw()
+    end  -- function drawStuff
+
+    function fillBuffer(rawstyles)
+      local avail = 0
+      local line_styles
+      local beginning = true
+      -- keep pulling out styles and trying to fit them on the current line
+      local styles = copytable.deep (rawstyles)
+      local remove = table.remove
+      local insert = table.insert
+      while #styles > 0 do
+        if avail <= 0 then -- no room available? start new line
+          avail = WINDOW_WIDTH - (TEXT_INSET * 2) - 9
+          line_styles = {}
+          add_line( line_styles, beginning )
+          beginning = false
+        end -- line full
+
+        -- get next style, work out how long it is
+        local style = remove (styles, 1)
+        local width = WindowTextWidth (Win, "bodyfont"..Win, style.text)
+
+        -- if it fits, copy whole style in
+        if width <= avail then
+          insert (line_styles, style)
+          avail = avail - width
+        else -- otherwise, have to split style
+          -- look for trailing space (work backwards). remember where space is
+          local col = style.length - 1
+          local split_col
+          -- keep going until out of columns
+          while col > 1 do
+            width = WindowTextWidth (Win, "bodyfont"..Win, style.text:sub (1, col))
+            if width <= avail then
+              if not split_col then
+                split_col = col  -- in case no space found, this is where we can split
+              end -- if
+              -- see if space here
+              if style.text:sub (col, col) == " " then
+                split_col = col
+                break
+              end -- if space
+            end -- if will now fit
+            col = col - 1
+          end -- while
+
+          -- if we found a place to split, use old style, and make it shorter. Also make a copy and put the rest in that
+          if split_col then
+            insert (line_styles, style)
+            local style_copy = copytable.shallow (style)
+            style.text = style.text:sub (1, split_col)
+            style.length = split_col
+            style_copy.text = style_copy.text:sub (split_col + 1)
+            style_copy.length = #style_copy.text
+            insert (styles, 1, style_copy)
+          elseif next (line_styles) == nil then
+            insert (line_styles, style)
+          else
+            insert (styles, 1, style)
+          end -- if
+          -- avail = 0  -- now we need to wrap
+        end -- if could not fit whole thing in
+      end -- while we still have styles over
+    end  -- function fillBuffer
+
+    -- Main capture routine
+    function map (name, line, wildcards, styles)
+      -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        -- Note ("")  -- wrap up line
+      end -- echo wanted
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function map
+
+    function add_line ( line, is_beginning_of_message )
+      -- add new line
+      table.insert (lines, {line, false} )
+      lines[#lines][2] = is_beginning_of_message
+
+      -- advance the count
+      if #lines >= WINDOW_LINES then
+        lineStart = lineStart + 1
+      end -- if
+
+      if #lines > 1 then
+        lineEnd = lineEnd + 1
+      end -- if
+    end -- function add_line
+
+    keepscrolling = false
+    require "wait"
+
+
+    function GetLineText (styles)
+      local t = {}
+      for _, style in ipairs (styles) do
+        table.insert (t, style.text)
+      end -- for
+      return table.concat (t)
+    end -- function GetLineText
+
+    function GetAllBufferedMessages()
+      local t = {}
+      for _,styles in ipairs(rawlines) do
+        table.insert (t, GetLineText (styles))
+      end -- for
+      SetClipboard(table.concat(t,"\r\n"))
+    end -- function GetAllBufferedMessages
+
+    function GetBufferedMessage(xpos, ypos)
+      windowline = math.floor(((ypos-theme.TITLE_HEIGHT)/line_height)+1)-1
+      text = ""
+      if (#lines > windowline) then
+        local line = windowline+lineStart
+
+        -- go to beginning of message
+        while lines[line][2] ~= true and line > 1 do
+          line = line - 1
+        end -- while
+
+        -- first line
+        local styles = copytable.deep(lines[line][1])
+        if (line-lineStart+1 > 0) then
+          Display_Line (line-lineStart, styles, true)
+        end -- if
+        text = GetLineText (styles)
+
+        -- remaining lines
+        line = line + 1
+        while line <= #lines and lines[line][2] ~= true do
+          local styles = copytable.deep(lines[line][1])
+          if (line-lineStart+1 > 0 and line-lineStart < WINDOW_LINES) then
+            Display_Line (line-lineStart, styles, true)
+          end
+          text = text.. GetLineText (styles)
+          line = line + 1
+        end -- while
+
+        SetClipboard(text)
+      end -- if
+    end  -- function GetBufferedMessage
+
+    function MouseOver(flags, hotspot_id)
+      keepscrolling = false
+    end  -- function MouseOver
+
+    function CancelMouseOver(flags, hotspot_id)
+      keepscrolling = false
+    end  -- function CancelMouseOver
+
+    function MouseDown(flags, hotspot_id)
+      if (hotspot_id == "textarea" and flags == miniwin.hotspot_got_lh_mouse) then
+        GetBufferedMessage(WindowInfo(Win, 14), WindowInfo(Win,15))
+      end -- if
+    end  -- function MouseDown
+
+    function CancelMouseDown(flags, hotspot_id)
+      keepscrolling = false
+      refresh()
+    end  -- function CancelMouseDown
+
+    function MouseUp(flags, hotspot_id)
+      if (hotspot_id == "textarea" and flags == miniwin.hotspot_got_rh_mouse) then
+        -- build menu for current state
+        right_click_menu()
+      else
+        refresh()
+      end -- if
+      keepscrolling = false
+    end  -- function MouseUp
+
+    function map_echo (name, line, wildcards)
+      if wildcards [1] == false then
+        echo = not echo  -- toggle
+      else
+        echo = wildcards [1]:lower () == " on"
+      end -- if
+
+      if echo then
+        ColourNote ("yellow", "", "Echoing map in main window ENABLED.")
+      else
+        ColourNote ("yellow", "", "Echoing map in main window DISABLED.")
+      end -- if
+    end -- function map_echo
+
+    function map_show (name, line, wildcards)
+     WindowShow( Win, true )
+     ColourNote ("yellow", "", "Maps window now shown. Type 'map hide' to hide it.")
+    end -- function map_show
+
+    function map_hide (name, line, wildcards)
+     WindowShow( Win, false )
+     ColourNote ("yellow", "", "Map window now hidden. Type 'map show' to see it again.")
+    end -- function map_hide
+
+    -- right click menu
+    function right_click_menu ()
+      menustring ="Change Font|Turn Echo "
+
+      if echo then
+        menustring = menustring .. "Off"
+      else
+        menustring = menustring .. "On"
+      end -- if
+
+      result = WindowMenu (Win,
+        WindowInfo (Win, 14),  -- x position
+        WindowInfo (Win, 15),   -- y position
+        menustring) -- content
+      if result == "Change Font" then
+        wanted_font = utils.fontpicker (BODY_FONT_NAME, BODY_FONT_SIZE) --font dialog
+        if wanted_font then
+          BODY_FONT_NAME = wanted_font.name
+          BODY_FONT_SIZE = wanted_font.size
+          SetVariable ("bodyfont", BODY_FONT_NAME)
+          SetVariable ("font_size", BODY_FONT_SIZE)
+          OnPluginInstall()
+        end
+      elseif result == "Turn Echo Off" then
+        echo = false
+        ColourNote ("yellow", "", "Echoing map in main window DISABLED.")
+      elseif result == "Turn Echo On" then
+        echo = true
+        ColourNote ("yellow", "", "Echoing map in main window ENABLED.")
+      end -- if
+    end -- function right_click_menu
+  ]]></script>
+</muclient>
