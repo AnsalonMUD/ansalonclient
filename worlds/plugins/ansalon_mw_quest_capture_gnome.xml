@@ -1,0 +1,984 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE muclient>
+
+<!--History>
+  * Adapted by Nick Gammon for Smaug and similar MUDs
+  * BBits of this plugin and ideas were borrowed and remixed from the MUSHclient community. http://www.gammon.com.au/forum/?id=9385 and others
+  * Modifications for Aardwolf and extra awesome sauce added by Fiendish with help from Orogan
+  * Modifications for Ansalon MUD (ansalonmud.com 8679) by Paladine on 2011-10-23
+  * Ref: http://mushclient.com/forum/bbshowpost.php?id=10728
+</History-->
+
+<!--Contributors>
+  * Ansalon
+  * gameshogun/techmagus
+</Contributors-->
+
+<muclient>
+  <plugin
+    name="Ansalon_MW_Quest_Tracker_Gnome"
+    author="Ansalon"
+    language="Lua"
+    purpose="Quest Tracker Gnome Edition"
+    save_state="y"
+    date_written="2015-10-03"
+    date_modified="2015-10-04"
+    requires="4.61"
+    version="1.00"
+    id="0a181268e19b83d72dc3aa36"
+    >
+    <description trim="y"><![CDATA[
+      USAGE:
+
+        quest echo on    : echo quest info in main window
+        quest echo off   : do not echo quest info
+        quest show       : show quest window
+        quest hide       : hide quest window
+        quest clean      : clean the quest tracker
+
+        LH-click to copy a single line
+        RH-click main window to see menu of options
+
+        Click title bar to drag window.
+    ]]></description>
+  </plugin>
+
+  <triggers>
+    <!-- QUEST COMPLETE -->
+    <trigger
+      enabled="y"
+      group="Quest_Tracker"
+      name="quest_done"
+      match="^^(?P<questmaster>\D+) tells you \'As a reward\, I am giving you (?P<reward_exp>\d+) experience\, (?P<reward_qpoints>\d+) quest points\, (?P<quest_money>.*?)\.\'$"
+      regexp="y"
+      send_to="12"
+      sequence="100"
+      script="quest_done"
+    ></trigger>
+
+    <!-- START QUEST TRIGGER -->
+    <trigger
+      enabled="y"
+      group="Quest_Tracker"
+      match="^(?P<questmaster>\D+) exclaims \'Thank you, brave (?P<player_name>\D+)\!\'$"
+      regexp="y"
+      send_to="12"
+      sequence="100"
+      >
+      <send>
+        inventory_table = {}
+        EnableTrigger ("target_item_line", true)
+        EnableTrigger ("target_mob_line", true)
+        EnableTrigger ("loc_item_line", true)
+        EnableTrigger ("loc_mob_line", true)
+        EnableTrigger ("timelimit_line", true)
+      </send>
+    </trigger>
+
+    <!-- QUEST: ITEM > NAME -->
+    <trigger
+      group="Quest_Tracker"
+      name="target_item_line"
+      match="^(?P<questmaster>\D+) tells you \'Bastard thieves have stolen (?P<quest_target>\D+)\!\'$"
+      regexp="y"
+      send_to="12"
+      sequence="75"
+      script="quest_item_target"
+      omit_from_output="y"
+    ></trigger>
+    <!-- QUEST: ITEM > LOC -->
+    <trigger
+      group="Quest_Tracker"
+      name="loc_item_line"
+      match="^(?P<questmaster>\D+) tells you \'Look in the area of (?P<loc_area>\D+) for (?P<loc_room>\D+)\!\!\'$"
+      regexp="y"
+      send_to="12"
+      sequence="50"
+      script="quest_item_loc"
+      omit_from_output="y"
+    ></trigger>
+
+    <!-- QUEST: MOB > NAME -->
+    <trigger
+      group="Quest_Tracker"
+      name="target_mob_line"
+      match="^(?P<questmaster>\D+) tells you \'Seek (?P<quest_target>\D+) out somewhere in the vicinity of (?P<loc_room>\D+)\!\'$"
+      regexp="y"
+      send_to="12"
+      sequence="75"
+      script="quest_mob_target_room"
+      omit_from_output="y"
+    ></trigger>
+    <!-- QUEST: MOB > LOC -->
+    <trigger
+      group="Quest_Tracker"
+      name="loc_mob_line"
+      match="^(?P<questmaster>\D+) tells you \'That location is in the general area of (?P<loc_area>\D+)\.\'$"
+      regexp="y"
+      send_to="12"
+      sequence="50"
+      script="quest_mob_loc_area"
+      omit_from_output="y"
+    ></trigger>
+
+    <!-- TIME LIMIT / STOP TRIGGER -->
+    <trigger
+      group="Quest_Tracker"
+      name="timelimit_line"
+      match="^(?P<questmaster>\D+) tells you \'You have (?P<timelimit>\d+) minutes to complete this quest\.\'$"
+      regexp="y"
+      send_to="12"
+      sequence="25"
+      script="quest_timelimit"
+      omit_from_output="y"
+      >
+      <send>
+        EnableTrigger ("target_item_line", false)
+        EnableTrigger ("target_mob_line", false)
+        EnableTrigger ("loc_item_line", false)
+        EnableTrigger ("loc_mob_line", false)
+        EnableTrigger ("timelimit_line", false)
+      </send>
+    </trigger>
+  </triggers>
+
+  <aliases>
+    <alias
+    script="quest_echo"
+    match="^quest echo( on| off)?$"
+    enabled="y"
+    regexp="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+
+    <alias
+    script="quest_show"
+    match="quest show"
+    enabled="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+
+    <alias
+    script="quest_hide"
+    match="quest hide"
+    enabled="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+
+    <alias
+    script="quest_clean"
+    match="quest clean"
+    enabled="y"
+    sequence="100"
+    ignore_case="y"
+    ></alias>
+  </aliases>
+
+  <script><![CDATA[
+    require "movewindow"  -- load the movewindow.lua module
+    require "copytable"
+
+    BODY_FONT_NAME = "FixedSys"
+    BODY_FONT_SIZE = 8
+    RESIZER_ICON_WIDTH = 15
+    MAX_LINES = 10 -- how many lines to store in scrollback
+
+    -- date_format = "[%d %b %H:%M:%S] "        -- [30 Aug 13:29:49]   date and time 24 hour
+    -- date_format = "[%d %b %I:%M:%S%p] "  -- [30 Aug 01:20:12PM]     date and time 12 hour
+    -- date_format = "[%H:%M:%S] "          -- [13:29:08]          time 24 hour
+    -- date_format = "[%X] "                  -- [1:22:06 PM]            time 12 hour
+
+    -- doing it this way makes them default to true the first time around
+    timestamp = not (GetVariable("timestamp") == "false")
+    echo = not (GetVariable("echo") == "false")
+
+    date_format = GetVariable("date_format")
+    WINDOW_WIDTH = tonumber(GetVariable("WINDOW_WIDTH"))
+    WINDOW_HEIGHT = tonumber(GetVariable("WINDOW_HEIGHT"))
+
+    -- offset of text from edge
+    TEXT_INSET = 5
+
+    -- where to store the quest line
+    lines = {}  -- table of recent quest lines
+    rawlines = {}
+
+    lineStart = ""
+    lineEnd = ""
+    WINDOW_COLUMNS = ""
+    WINDOW_LINES = ""
+
+    theme = {
+      WINDOW_BACKGROUND = ColourNameToRGB ("#000000"), -- for miniwindow body
+      WINDOW_BORDER = ColourNameToRGB("#E8E8E8"), -- for miniwindow body
+
+      HIGHLIGHT=ColourNameToRGB("#FFFFFF"), -- for 3D surfaces
+      FACE=ColourNameToRGB("#D4D0C8"), -- for 3D surfaces
+      INNERSHADOW=ColourNameToRGB("#808080"), -- for 3D surfaces
+      OUTERSHADOW = ColourNameToRGB("#404040"), -- for 3D surfaces
+
+      BACK_FACE = ColourNameToRGB ("#E8E8E8"), -- for contrasting details
+      DETAIL = ColourNameToRGB ("#000000"), -- for contrasting details
+
+      TITLE_HEIGHT = 17, -- for miniwindow title area
+      SUBTITLE_HEIGHT = 17, -- for miniwindow title area
+      TITLE_FONT_NAME = "Dina", -- for miniwindow title area
+      TITLE_FONT_SIZE = 8 -- for miniwindow title area
+    }  -- end theme table
+
+    -- replacement for WindowRectOp action 5, which allows for a 3D look while maintaining color theme
+    -- Requires global theme.HIGHLIGHT, theme.FACE, theme.INNERSHADOW, and theme.OUTERSHADOW rgb colors to be set.
+    function DrawThemed3DRect(Window, left, top, right, bottom)
+      WindowRectOp(Window, miniwin.rect_fill, left, top, right, bottom, theme.FACE)
+      WindowLine(Window, left, top, right, top, theme.HIGHLIGHT,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, top, left, bottom, theme.HIGHLIGHT,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, bottom-2, right, bottom-2, theme.INNERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, right-2, top, right-2, bottom-2, theme.INNERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, left, bottom-1, right, bottom-1, theme.OUTERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+      WindowLine(Window, right-1, top, right-1, bottom-1, theme.OUTERSHADOW,
+                  miniwin.pen_solid + miniwin.pen_endcap_flat, 1)
+    end
+
+    function DrawThemedResizeTag(Window, x1, y1, size)
+      local x2, y2 = x1+size, y1+size
+      DrawThemed3DRect(Window, x1, y1, x2, y2)
+      local m = 2
+      local n = 2
+      while (x1+m+2 <= x2-3 and y1+n+1 <= y2-4) do
+          WindowLine(Window, x1+m+1, y2-4, x2-3, y1+n, theme.HIGHLIGHT,
+                      miniwin.pen_solid, 1)
+          WindowLine(Window, x1+m+2, y2-4, x2-3, y1+n+1, theme.INNERSHADOW,
+                      miniwin.pen_solid, 1)
+          m = m+3
+          n = n+3
+      end
+    end  -- function DrawThemedResizeTag
+
+    Win = GetPluginID()
+    font_height = ""
+    line_height = ""
+    windowinfo = ""
+    startx = ""
+    starty = ""
+
+    function ResizeMoveCallback()
+      posx, posy = WindowInfo (Win, 17), WindowInfo (Win, 18)
+      if (WindowTextWidth(Win, "titlefont"..Win, "WWWCOMMUNICATION")+2*RESIZER_ICON_WIDTH <= WINDOW_WIDTH+posx-startx) then
+          WINDOW_WIDTH = WINDOW_WIDTH+posx-startx
+          startx = posx
+      end  -- if
+      if (3*RESIZER_ICON_WIDTH+10+line_height+theme.TITLE_HEIGHT <= WINDOW_HEIGHT+posy-starty) then
+          WINDOW_HEIGHT = WINDOW_HEIGHT+posy-starty
+          starty = posy
+      end -- if
+      init(false)
+    end -- function ResizeMoveCallback
+
+    function ResizeReleaseCallback()
+      WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*(WINDOW_LINES-1))+3
+      init(true)
+    end  -- ResizeReleaseCallback
+
+    function OnPluginInstall()
+      -- Dummy window to get font characteristics
+      check (WindowCreate (Win, 0, 0, 1, 1, 5, 0, theme.WINDOW_BACKGROUND) )
+      check (WindowFont(Win, "bodyfont"..Win, BODY_FONT_NAME, BODY_FONT_SIZE))
+      check (WindowFont(Win, "titlefont"..Win, theme.TITLE_FONT_NAME, theme.TITLE_FONT_SIZE))
+      font_height = WindowFontInfo (Win, "bodyfont"..Win, 1) -  WindowFontInfo (Win, "bodyfont"..Win, 4) + 1
+      line_height = font_height+1
+      font_width = WindowTextWidth (Win, "bodyfont"..Win, "W")
+
+      -- install the window movement handler, get back the window position
+      windowinfo = movewindow.install (Win, miniwin.pos_center_all, 0, true)
+
+      -- check for Echo/Timestamp/date_format/window size (in pixels) variables, if not there, set them
+      if date_format == nil then
+          date_format = "[%d %b %H:%M:%S] "
+      end -- if
+      if WINDOW_WIDTH == nil then
+          WINDOW_WIDTH = (font_width*40)+10 -- 40 characters
+      end
+      if WINDOW_HEIGHT == nil then
+        WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*5)+5 -- 5 lines
+      end -- if
+      init(true)
+      OnPluginEnable ()  -- do initialization stuff
+    end -- function OnPluginInstall
+
+    function init(firstTime)
+      -- how many lines and columns will fit?
+      WINDOW_LINES = math.ceil((WINDOW_HEIGHT-theme.TITLE_HEIGHT)/line_height)
+      WINDOW_COLUMNS = math.ceil((WINDOW_WIDTH)/font_width)
+
+      if firstTime then
+        WindowCreate(Win, windowinfo.window_left, windowinfo.window_top, WINDOW_WIDTH, WINDOW_HEIGHT, windowinfo.window_mode, windowinfo.window_flags, theme.WINDOW_BACKGROUND)
+
+        -- catch for right-click menu and line selection
+        WindowAddHotspot(Win, "textarea", 0, theme.TITLE_HEIGHT, WINDOW_WIDTH,0,
+            "", "", "MouseDown", "CancelMouseDown", "MouseUp", "",
+            miniwin.cursor_ibeam, 0)
+        -- add the drag handler so they can move the window around
+        movewindow.add_drag_handler (Win, 0, 0, 0, theme.TITLE_HEIGHT)
+
+        -- add the resize widget hotspot
+        WindowAddHotspot(Win, "resizer", WINDOW_WIDTH-RESIZER_ICON_WIDTH, WINDOW_HEIGHT-RESIZER_ICON_WIDTH, WINDOW_WIDTH, WINDOW_HEIGHT,
+            "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "",
+            miniwin.cursor_nw_se_arrow, 0)
+        WindowDragHandler(Win, "resizer", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+      else
+        WindowResize(Win, WINDOW_WIDTH, WINDOW_HEIGHT, theme.WINDOW_BACKGROUND)
+        WindowMoveHotspot(Win, "textarea", 0, theme.TITLE_HEIGHT, WINDOW_WIDTH, 0)
+        WindowMoveHotspot(Win, "resizer", WINDOW_WIDTH-RESIZER_ICON_WIDTH, WINDOW_HEIGHT-RESIZER_ICON_WIDTH, WINDOW_WIDTH, 0)
+      end -- if
+      WindowShow(Win, true)
+
+      if (firstTime == true) then
+        lines = {}
+        for _,styles in ipairs(rawlines) do
+          fillBuffer(styles)
+        end  -- for each line
+      end -- if
+
+      lineStart = math.max(1, #lines-WINDOW_LINES+2)
+      lineEnd = math.max(1, #lines)
+      refresh()
+    end  -- function init
+
+    function OnPluginClose ()
+      -- if enabled
+      if GetPluginInfo (GetPluginID(), 17) then
+          OnPluginDisable()
+      end -- if enabled
+    end -- function OnPluginClose
+
+    function OnPluginEnable ()
+      WindowShow (Win, true)
+    end -- function OnPluginEnable
+
+    function OnPluginSaveState ()
+      -- save window current location for next time
+      SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
+      movewindow.save_state (Win)
+      -- save echo/timestamp status
+      SetVariable ("echo", tostring (echo))
+      SetVariable ("timestamp", tostring (timestamp))
+      SetVariable("date_format", date_format)
+      SetVariable("WINDOW_WIDTH", WINDOW_WIDTH)
+      SetVariable("WINDOW_HEIGHT", WINDOW_HEIGHT)
+    end -- function OnPluginSaveState
+
+    function OnPluginDisable ()
+      WindowShow( Win, false )
+    end -- function OnPluginDisable
+
+    -- display one line
+    function Display_Line (line, styles)
+      local left = TEXT_INSET
+
+      field_color = ColourNameToRGB ("brown")
+      text_color = ColourNameToRGB ("darkcyan")
+
+      -- avoid nil and table value errors (hackish)
+      questmaster = questmaster or ""
+      quest_target = quest_target or ""
+      loc_room = loc_room or ""
+      loc_area = loc_area or ""
+      timelimit = tonumber (timelimit) or ""
+
+      if quest_target ~= "" then
+        -- QUESTMASTER
+        WindowText (Win, "bodyfont"..Win,
+                    "QM:",   -- text
+                    left, 17, 0, 0,        -- rectangle
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    questmaster,   -- text
+                    37, 17, 0, 0,        -- rectangle
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- QUEST_TARGET
+        WindowText (Win, "bodyfont"..Win,
+                    "TG:",   -- text
+                    left, 31, 0, 0,        -- rectangle (always +14 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    quest_target,   -- text
+                    37, 31, 0, 0,        -- rectangle (always +14 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- LOC_ROOM
+        WindowText (Win, "bodyfont"..Win,
+                    "RM:",   -- text
+                    left, 45, 0, 0,        -- rectangle (always +14 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    loc_room,   -- text
+                    37, 45, 0, 0,        -- rectangle (always +14 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- LOC_AREA
+        WindowText (Win, "bodyfont"..Win,
+                    "AR:",   -- text
+                    left, 59, 0, 0,        -- rectangle (always +14 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    loc_area,   -- text
+                    37, 59, 0, 0,        -- rectangle (always +14 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- TIMELIMIT
+        WindowText (Win, "bodyfont"..Win,
+                    "T-:",   -- text
+                    left, 73, 0, 0,        -- rectangle (always +4 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    timelimit.." mins (static)",   -- text
+                    37, 73, 0, 0,        -- rectangle (always +4 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+      end -- if tracker
+
+      -- avoid nil and table value errors (hackish)
+      questmaster = questmaster or ""
+      reward_exp = reward_exp or ""
+      reward_qpoints = reward_qpoints or ""
+      quest_money = quest_money or ""
+
+      if reward_exp ~= "" then
+        -- QUESTMASTER
+        WindowText (Win, "bodyfont"..Win,
+                    "EXP:",   -- text
+                    left, 17, 0, 0,        -- rectangle
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    reward_exp,   -- text
+                    45, 17, 0, 0,        -- rectangle
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- QUEST_TARGET
+        WindowText (Win, "bodyfont"..Win,
+                    "QP:",   -- text
+                    left, 31, 0, 0,        -- rectangle (always +14 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    reward_qpoints,   -- text
+                    37, 31, 0, 0,        -- rectangle (always +14 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+
+        -- LOC_ROOM
+        WindowText (Win, "bodyfont"..Win,
+                    "Money:",   -- text
+                    left, 45, 0, 0,        -- rectangle (always +14 from previous)
+                    field_color, -- colour
+                    false)              -- not Unicode
+        WindowText (Win, "bodyfont"..Win,
+                    quest_money,   -- text
+                    61, 45, 0, 0,        -- rectangle (always +14 from previous)
+                    text_color, -- colour
+                    false)              -- not Unicode
+      end -- if reward
+
+      Redraw()
+    end -- function Display_Line
+
+    -- display all visible lines
+    function writeLines()
+      for count = lineStart, lineEnd do
+        -- hackish, yey
+        lineStart = 1
+        lineEnd = 1
+        count = 1
+
+        Display_Line( count-lineStart, lines[count][1], false )
+      end  -- for each line
+    end  -- function writeLines
+
+    -- clear and redraw
+    function refresh()
+      WindowRectOp(Win, miniwin.rect_fill, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, theme.WINDOW_BACKGROUND)
+      drawStuff()
+    end  -- function refresh
+
+    barPos = ""
+    barSize = ""
+    totalSteps = ""
+
+    function drawStuff()
+      -- draw border
+      WindowRectOp (Win, miniwin.rect_frame, 0, 0, 0, 0, theme.WINDOW_BORDER)
+
+      -- Title bar
+      DrawThemed3DRect(Win, 0, 0, WINDOW_WIDTH, theme.TITLE_HEIGHT)
+
+      -- Title text
+      WindowText(Win, "titlefont"..Win, "Quest Tracker Gnome Ed.", ((WINDOW_WIDTH)-(7.5*line_height))/2, (theme.TITLE_HEIGHT-line_height)/2, WINDOW_WIDTH, theme.TITLE_HEIGHT, theme.DETAIL, false)
+
+      if #lines >= 1 then
+          writeLines()
+      end -- if
+
+      -- resizer tag
+      DrawThemedResizeTag(Win, WINDOW_WIDTH-RESIZER_ICON_WIDTH, WINDOW_HEIGHT-RESIZER_ICON_WIDTH, RESIZER_ICON_WIDTH)
+
+      Redraw()
+    end  -- function drawStuff
+
+    function fillBuffer(rawstyles)
+      local avail = 0
+      local line_styles
+      local beginning = true
+      -- keep pulling out styles and trying to fit them on the current line
+      local styles = copytable.deep (rawstyles)
+      local remove = table.remove
+      local insert = table.insert
+      while #styles > 0 do
+        if avail <= 0 then -- no room available? start new line
+          -- remove first line if filled up
+          if #lines >= MAX_LINES then
+              remove (lines, 1)
+          end -- if
+          avail = WINDOW_WIDTH - (TEXT_INSET * 2) - 9
+          line_styles = {}
+          add_line( line_styles, beginning )
+          beginning = false
+        end -- line full
+
+        -- get next style, work out how long it is
+        local style = remove (styles, 1)
+        local width = WindowTextWidth (Win, "bodyfont"..Win, style.text)
+
+        -- if it fits, copy whole style in
+        if width <= avail then
+          insert (line_styles, style)
+          avail = avail - width
+        else -- otherwise, have to split style
+          -- look for trailing space (work backwards). remember where space is
+          local col = style.length - 1
+          local split_col
+          -- keep going until out of columns
+          while col > 1 do
+            width = WindowTextWidth (Win, "bodyfont"..Win, style.text:sub (1, col))
+            if width <= avail then
+              if not split_col then
+                split_col = col  -- in case no space found, this is where we can split
+              end -- if
+              -- see if space here
+              if style.text:sub (col, col) == " " then
+                split_col = col
+                break
+              end -- if space
+            end -- if will now fit
+            col = col - 1
+          end -- while
+
+          -- if we found a place to split, use old style, and make it shorter. Also make a copy and put the rest in that
+          if split_col then
+            insert (line_styles, style)
+            local style_copy = copytable.shallow (style)
+            style.text = style.text:sub (1, split_col)
+            style.length = split_col
+            style_copy.text = style_copy.text:sub (split_col + 1)
+            style_copy.length = #style_copy.text
+            insert (styles, 1, style_copy)
+          elseif next (line_styles) == nil then
+            insert (line_styles, style)
+          else
+            insert (styles, 1, style)
+          end -- if
+          avail = 0  -- now we need to wrap
+        end -- if could not fit whole thing in
+      end -- while we still have styles over
+    end  -- function fillBuffer
+
+    function quest_item_target (name, line, wildcards, styles)
+     -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- inject timestamp if wanted
+      if timestamp then
+        tstamp = os.date (date_format)
+        styles[1].text = tstamp..styles[1].text
+        styles[1].length = styles[1].length+string.len(tstamp)
+      end -- if
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      quest_target = wildcards.quest_target
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_item_target
+
+    function quest_item_loc (name, line, wildcards, styles)
+     -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- inject timestamp if wanted
+      if timestamp then
+        tstamp = os.date (date_format)
+        styles[1].text = tstamp..styles[1].text
+        styles[1].length = styles[1].length+string.len(tstamp)
+      end -- if
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      loc_room = wildcards.loc_room
+      loc_area = wildcards.loc_area
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_item_loc
+
+    function quest_mob_target_room (name, line, wildcards, styles)
+     -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- inject timestamp if wanted
+      if timestamp then
+        tstamp = os.date (date_format)
+        styles[1].text = tstamp..styles[1].text
+        styles[1].length = styles[1].length+string.len(tstamp)
+      end -- if
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      quest_target = wildcards.quest_target
+      loc_room = wildcards.loc_room
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_mob_target_room
+
+    function quest_mob_loc_area (name, line, wildcards, styles)
+     -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- inject timestamp if wanted
+      if timestamp then
+        tstamp = os.date (date_format)
+        styles[1].text = tstamp..styles[1].text
+        styles[1].length = styles[1].length+string.len(tstamp)
+      end -- if
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      loc_area = wildcards.loc_area
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_mob_loc_area
+
+    function quest_timelimit (name, line, wildcards, styles)
+      -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- inject timestamp if wanted
+      if timestamp then
+        tstamp = os.date (date_format)
+        styles[1].text = tstamp..styles[1].text
+        styles[1].length = styles[1].length+string.len(tstamp)
+      end -- if
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      timelimit = wildcards.timelimit
+
+      -- CLEAN-UP
+      reward_exp = nil
+      reward_qpoints = nil
+      quest_money = nil
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_timelimit
+
+    function quest_done (name, line, wildcards, styles)
+      -- echo in this world as well if the user wants
+      if echo then
+        for _, v in ipairs (styles) do
+          ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
+        end -- for each style run
+        Note ("")  -- wrap up line
+      end -- echo wanted
+
+      -- store the raw lines for use during resizing
+      if #rawlines >= MAX_LINES then
+        table.remove(rawlines, 1)
+      end
+      table.insert(rawlines, styles)
+
+      questmaster = wildcards.questmaster
+      reward_exp = wildcards.reward_exp
+      reward_qpoints = wildcards.reward_qpoints
+      quest_money = wildcards.quest_money
+
+      -- CLEAN-UP
+      quest_target = nil
+      loc_room = nil
+      loc_area = nil
+      timelimit = nil
+
+      fillBuffer(styles)
+      refresh( )
+    end -- function quest_done
+
+
+
+
+
+    function add_line ( line, is_beginning_of_message )
+      -- add new line
+      table.insert (lines, {line, false} )
+      lines[#lines][2] = is_beginning_of_message
+
+      -- advance the count
+      if #lines >= WINDOW_LINES then
+        lineStart = lineStart + 1
+      end -- if
+
+      if #lines > 1 then
+        lineEnd = lineEnd + 1
+      end -- if
+    end -- function add_line
+
+    keepscrolling = false
+    require "wait"
+
+    function GetLineText (styles)
+      local t = {}
+      for _, style in ipairs (styles) do
+        table.insert (t, style.text)
+      end -- for
+      return table.concat (t)
+    end -- function GetLineText
+
+    function GetAllBufferedMessages()
+      local t = {}
+      for _,styles in ipairs(rawlines) do
+        table.insert (t, GetLineText (styles))
+      end -- for
+      SetClipboard(table.concat(t,"\r\n"))
+    end -- function GetAllBufferedMessages
+
+    function GetBufferedMessage(xpos, ypos)
+      windowline = math.floor(((ypos-theme.TITLE_HEIGHT)/line_height)+1)-1
+      text = ""
+      if (#lines > windowline) then
+        local line = windowline+lineStart
+        -- go to beginning of message
+        while lines[line][2] ~= true and line > 1 do
+          line = line - 1
+        end -- while
+        -- first line
+        local styles = copytable.deep(lines[line][1])
+        if (line-lineStart+1 > 0) then
+          Display_Line (line-lineStart, styles, true)
+        end -- if
+        text = GetLineText (styles)
+        -- remaining lines
+        line = line + 1
+        while line <= #lines and lines[line][2] ~= true do
+          local styles = copytable.deep(lines[line][1])
+          if (line-lineStart+1 > 0 and line-lineStart < WINDOW_LINES) then
+            Display_Line (line-lineStart, styles, true)
+          end
+          text = text.. GetLineText (styles)
+          line = line + 1
+        end -- while
+        SetClipboard(text)
+      end -- if
+    end  -- function GetBufferedMessage
+
+    function MouseOver(flags, hotspot_id)
+      keepscrolling = false
+    end  -- function MouseOver
+
+    function CancelMouseOver(flags, hotspot_id)
+      keepscrolling = false
+    end  -- function CancelMouseOver
+
+    function MouseDown(flags, hotspot_id)
+      if (hotspot_id == "resizer") then
+        startx, starty = WindowInfo (Win, 17), WindowInfo (Win, 18)
+      elseif (hotspot_id == "textarea" and flags == miniwin.hotspot_got_lh_mouse) then
+        GetBufferedMessage(WindowInfo(Win, 14), WindowInfo(Win,15))
+      else
+        keepscrolling = true
+      end -- if
+    end  -- function MouseDown
+
+    function CancelMouseDown(flags, hotspot_id)
+      keepscrolling = false
+      refresh()
+    end  -- function CancelMouseDown
+
+    function MouseUp(flags, hotspot_id)
+      if (hotspot_id == "textarea" and flags == miniwin.hotspot_got_rh_mouse) then
+        -- build menu for current state
+        right_click_menu()
+      else
+        refresh()
+      end -- if
+      keepscrolling = false
+    end  -- function MouseUp
+
+    function quest_echo (name, line, wildcards)
+      if wildcards [1] == false then
+        echo = not echo  -- toggle
+      else
+        echo = wildcards [1]:lower () == " on"
+      end -- if
+
+      if echo then
+        ColourNote ("yellow", "", "Echoing quests in main window ENABLED.")
+      else
+        ColourNote ("yellow", "", "Echoing quests in main window DISABLED.")
+      end -- if
+    end -- function quest_echo
+
+    function quest_show (name, line, wildcards)
+      WindowShow( Win, true )
+      ColourNote ("yellow", "", "Quest tracker now shown. Type 'quest hide' to hide it.")
+    end -- function quest_show
+
+    function quest_hide (name, line, wildcards)
+      WindowShow( Win, false )
+      ColourNote ("yellow", "", "Quest tracker now hidden. Type 'quest show' to see it again.")
+    end -- function quest_hide
+
+    function quest_clean (line, styles)
+      quest_target = nil
+      loc_room = nil
+      loc_area = nil
+      timelimit = nil
+      reward_exp = nil
+      reward_qpoints = nil
+      quest_money = nil
+
+      ColourNote ("yellow", "", "Quest tracker now clean.")
+      refresh( )
+      Redraw()
+    end -- function quest_up
+
+    -- right click menu
+    function right_click_menu ()
+      menustring ="Copy All To Clipboard|Change Font|Turn Echo "
+
+      if echo then
+        menustring = menustring .. "Off"
+      else
+        menustring = menustring .. "On"
+      end -- if
+
+      menustring = menustring.."|>Timestamp|No Timestamps|30 Aug 13:29:49|30 Aug 01:20:12PM|13:29:08|1:22:06 PM"
+      result = WindowMenu (Win,
+          WindowInfo (Win, 14),  -- x position
+          WindowInfo (Win, 15),   -- y position
+          menustring) -- content
+      if result == "Copy All To Clipboard" then
+        GetAllBufferedMessages()
+        ColourNote ("yellow", "", "All buffered messages copied to clipboard.")
+      elseif result == "Change Font" then
+        wanted_font = utils.fontpicker (BODY_FONT_NAME, BODY_FONT_SIZE) --font dialog
+        if wanted_font then
+          BODY_FONT_NAME = wanted_font.name
+          BODY_FONT_SIZE = wanted_font.size
+          SetVariable ("bodyfont", BODY_FONT_NAME)
+          SetVariable ("font_size", BODY_FONT_SIZE)
+          OnPluginInstall()
+        end
+      elseif result == "Turn Echo Off" then
+        echo = false
+        ColourNote ("yellow", "", "Echoing quests in main window DISABLED.")
+      elseif result == "Turn Echo On" then
+        echo = true
+        ColourNote ("yellow", "", "Echoing quests in main window ENABLED.")
+      elseif result == "No Timestamps" then
+        timestamp = false
+        ColourNote ("yellow", "", "Timestamps in communication window DISABLED.")
+      elseif result == "30 Aug 13:29:49" then
+        timestamp = true
+        date_format = "[%d %b %H:%M:%S] "
+        ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '30 Aug 13:29:49'.")
+      elseif result == "30 Aug 01:20:12PM" then
+        timestamp = true
+        date_format = "[%d %b %I:%M:%S%p] "
+        ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '30 Aug 01:20:12PM'.")
+      elseif result == "13:29:08" then
+        timestamp = true
+        date_format = "[%H:%M:%S] "
+        ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '13:29:08'.")
+      elseif result == "1:22:06 PM" then
+        timestamp = true
+        date_format = "[%I:%M:%S%p] "
+        ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '1:22:06 PM'.")
+      end -- if
+    end -- function right_click_menu
+  ]]></script>
+</muclient>
