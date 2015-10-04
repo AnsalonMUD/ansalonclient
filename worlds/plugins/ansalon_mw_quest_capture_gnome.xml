@@ -24,7 +24,7 @@
     date_written="2015-10-03"
     date_modified="2015-10-04"
     requires="4.61"
-    version="1.00"
+    version="1.01"
     id="0a181268e19b83d72dc3aa36"
     >
     <description trim="y"><![CDATA[
@@ -34,7 +34,7 @@
         quest echo off   : do not echo quest info
         quest show       : show quest window
         quest hide       : hide quest window
-        quest clean      : clean the quest tracker
+        quest clear      : clean the quest tracker
 
         LH-click to copy a single line
         RH-click main window to see menu of options
@@ -49,7 +49,7 @@
       enabled="y"
       group="Quest_Tracker"
       name="quest_done"
-      match="^^(?P<questmaster>\D+) tells you \'As a reward\, I am giving you (?P<reward_exp>\d+) experience\, (?P<reward_qpoints>\d+) quest points\, (?P<quest_money>.*?)\.\'$"
+      match="^^(?P<questmaster>.*) tells you \'As a reward\, I am giving you (?P<reward_exp>\d+) experience\, (?P<reward_qpoints>\d+) quest points\, (?P<quest_money>.*?)\.\'$"
       regexp="y"
       send_to="12"
       sequence="100"
@@ -60,7 +60,7 @@
     <trigger
       enabled="y"
       group="Quest_Tracker"
-      match="^(?P<questmaster>\D+) exclaims \'Thank you, brave (?P<player_name>\D+)\!\'$"
+      match="^(?P<questmaster>.*) exclaims \'Thank you, brave (?P<player_name>.*)\!\'$"
       regexp="y"
       send_to="12"
       sequence="100"
@@ -79,7 +79,7 @@
     <trigger
       group="Quest_Tracker"
       name="target_item_line"
-      match="^(?P<questmaster>\D+) tells you \'Bastard thieves have stolen (?P<quest_target>\D+)\!\'$"
+      match="^(?P<questmaster>.*) tells you \'Bastard thieves have stolen (?P<quest_target>.*)\!\'$"
       regexp="y"
       send_to="12"
       sequence="75"
@@ -90,7 +90,7 @@
     <trigger
       group="Quest_Tracker"
       name="loc_item_line"
-      match="^(?P<questmaster>\D+) tells you \'Look in the area of (?P<loc_area>\D+) for (?P<loc_room>\D+)\!\!\'$"
+      match="^(?P<questmaster>.*) tells you \'Look in the area of (?P<loc_area>.*) for (?P<loc_room>.*)\!\!\'$"
       regexp="y"
       send_to="12"
       sequence="50"
@@ -102,7 +102,7 @@
     <trigger
       group="Quest_Tracker"
       name="target_mob_line"
-      match="^(?P<questmaster>\D+) tells you \'Seek (?P<quest_target>\D+) out somewhere in the vicinity of (?P<loc_room>\D+)\!\'$"
+      match="^(?P<questmaster>.*) tells you \'Seek (?P<quest_target>.*) out somewhere in the vicinity of (?P<loc_room>.*)\!\'$"
       regexp="y"
       send_to="12"
       sequence="75"
@@ -113,7 +113,7 @@
     <trigger
       group="Quest_Tracker"
       name="loc_mob_line"
-      match="^(?P<questmaster>\D+) tells you \'That location is in the general area of (?P<loc_area>\D+)\.\'$"
+      match="^(?P<questmaster>.*) tells you \'That location is in the general area of (?P<loc_area>.*)\.\'$"
       regexp="y"
       send_to="12"
       sequence="50"
@@ -125,7 +125,7 @@
     <trigger
       group="Quest_Tracker"
       name="timelimit_line"
-      match="^(?P<questmaster>\D+) tells you \'You have (?P<timelimit>\d+) minutes to complete this quest\.\'$"
+      match="^(?P<questmaster>.*) tells you \'You have (?P<timelimit>\d+) minutes to complete this quest\.\'$"
       regexp="y"
       send_to="12"
       sequence="25"
@@ -169,8 +169,8 @@
     ></alias>
 
     <alias
-    script="quest_clean"
-    match="quest clean"
+    script="quest_clear"
+    match="quest clear"
     enabled="y"
     sequence="100"
     ignore_case="y"
@@ -912,7 +912,7 @@
       ColourNote ("yellow", "", "Quest tracker now hidden. Type 'quest show' to see it again.")
     end -- function quest_hide
 
-    function quest_clean (line, styles)
+    function quest_clear (line, styles)
       quest_target = nil
       loc_room = nil
       loc_area = nil

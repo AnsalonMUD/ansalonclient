@@ -20,7 +20,7 @@
     date_written="2008-07-24"
     date_modified="2015-10-04"
     requires="4.61"
-    version="1.00"
+    version="1.01"
     id="0fa8dce9c73de497a1fd5164"
     >
     <description trim="y"><![CDATA[
@@ -178,7 +178,7 @@
       end -- if
 
       table.insert (quest_info, text)
-      max_width = math.max (max_width+40)
+      max_width = math.max (max_width, WindowTextWidth (win, font_id, "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeee"))
     end -- questor_line
 
     function Display_Line (line, text, id, colour)
@@ -204,12 +204,12 @@
                     0, 0,   -- left, top (auto-positions)
                     max_width + 10,     -- width
                     font_height + 5,  -- height
-                    miniwin.pos_center_right,
-                    0,  -- flags
+                    miniwin.pos_top_left,
+                    2,  -- flags
                     background_colour)
 
         -- add the drag handler so they can move the window around
-        movewindow.add_drag_handler (Win, 0, 0, 0, font_height + 5)
+        movewindow.add_drag_handler (win, 0, 0, 0, font_height + 5)
 
 
       Display_Line (1, text, font_id, time_colour)
@@ -233,13 +233,13 @@
       WindowCreate (win,
                     0, 0,   -- left, top (auto-positions)
                     max_width + 10,     -- width
-                    (2 + 2) * font_height + 5,  -- height
-                    miniwin.pos_center_right,
-                    0,  -- flags
+                    (3 + 2) * font_height + 5,  -- height
+                    miniwin.pos_top_left,
+                    2,  -- flags
                     background_colour)
 
         -- add the drag handler so they can move the window around
-        movewindow.add_drag_handler (Win, 0, 0, 0, (2 + 2) * font_height + 5)
+        movewindow.add_drag_handler (win, 0, 0, 0, (2 + 2) * font_height + 5)
 
       -- heading
       local text = "Quest Tracker Kender Ed."
@@ -269,14 +269,16 @@
         if i == 1 and quest_target ~= nil then
           Display_Line (i + 1, "TGT: "..quest_target, font_id, text_colour)
         elseif i == 2 and loc_room ~= nil and loc_area ~= nil then
-          Display_Line (i + 1, "LOC: "..loc_room..", "..loc_area, font_id, text_colour)
+          Display_Line (i + 1, "RM: "..loc_room, font_id, text_colour)
+          Display_Line (i + 2, "AR: "..loc_area, font_id, text_colour)
           quest_target = nil
           loc_room = nil
           loc_area = nil
         elseif i == 4 then
           Display_Line (i - 2, "TGT: "..quest_target, font_id, text_colour)
         elseif i == 5 then
-          Display_Line (i - 2, "AR: "..loc_area, font_id, text_colour)
+          Display_Line (i - 2, "RM: "..loc_room, font_id, text_colour)
+          Display_Line (i - 1, "AR: "..loc_area, font_id, text_colour)
           quest_target = nil
           loc_room = nil
           loc_area = nil
@@ -297,7 +299,7 @@
       end -- if
 
       text = string.format ("Time left: %s", convert_time (time_to_go))
-      Display_Line (2 + 2, text, font_id, time_colour)
+      Display_Line (3 + 2, text, font_id, time_colour)
 
       WindowShow (win, true)
     end -- show_quest_text
@@ -330,9 +332,8 @@
 
     function OnPluginSaveState ()
       SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID (), 17)))
-      SetVariable ("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
       -- save window current location for next time
-      movewindow.save_state (Win)
+      movewindow.save_state (win)
     end -- function OnPluginSaveState
 
     function OnPluginInstall ()
@@ -345,14 +346,14 @@
       WindowCreate (win,
                     0, 0, 1, 1,  -- 1 x 1 pixel
                     1,   -- position - irrelevant
-                    0,   -- flags
+                    2,   -- flags
                     0)   -- background colour
 
       check (WindowFont (win, font_id, font_name, 8))  -- normal
       font_height = WindowFontInfo (win, font_id, 1)  -- height
 
       -- install the window movement handler, get back the window position
-      windowinfo = movewindow.install (Win, miniwin.pos_center_all, 0, true)
+      windowinfo = movewindow.install (win, miniwin.pos_top_left, 0, true)
 
       if GetVariable ("enabled") == "false" then
         ColourNote ("yellow", "", "Warning: Plugin " .. GetPluginName ().. " is currently disabled.")
