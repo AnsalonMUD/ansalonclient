@@ -6,6 +6,7 @@
   * BBits of this plugin and ideas were borrowed and remixed from the MUSHclient community. http://www.gammon.com.au/forum/?id=9385 and others
   * Modifications for Aardwolf and extra awesome sauce added by Fiendish with help from Orogan
   * Modifications for Ansalon MUD (ansalonmud.com 8679) by Paladine on 2011-10-23
+  * Ref: http://mushclient.com/forum/bbshowpost.php?id=10728
 </History-->
 
 <!--Contributors>
@@ -29,7 +30,7 @@
     purpose="Move chats to a miniwindow"
     save_state="y"
     date_written="2011-10-23"
-    date_modified="2015-10-02"
+    date_modified="2015-10-03"
     requires="4.61"
     version="2.40"
     id="b9e6fbfef9d59630399fb2d8"
@@ -50,277 +51,303 @@
   </plugin>
 
   <triggers>
-    <!-- BANKING -->
-    <!--
-    <trigger
-    enabled="y"
-    match="You deposit *"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-    -->
-
-    <!-- BANKING -->
-    <!--
-    <trigger
-    enabled="y"
-    match="You withdraw *"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-    -->
-
-    <!-- SHOPPING -->
-    <!--
-    <trigger
-    enabled="y"
-    match="You sell *"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-    -->
-
-    <!-- SAY -->
-    <trigger
-    enabled="y"
-    match="^You (say|exclaim|ask|shout|yell) \'(.*?)\'$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- SAY -->
-    <trigger
-    enabled="y"
-    match="^(?P<trash>.*) (?P<sname>.*) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- SAY -->
-    <trigger
-    enabled="y"
-    match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL -->
-    <trigger
-    enabled="y"
-    match="You tell * '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL -->
-    <trigger
-    enabled="y"
-    match="(?P<trash>.*) (?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL -->
-    <trigger
-    enabled="y"
-    match="(?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL REPLY -->
-    <trigger
-    enabled="y"
-    match="You reply to * '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL REPLIES TO YOU -->
-    <trigger
-    enabled="y"
-    match="* replies '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- TELL GROUP -->
-    <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="You tell the group '*'"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="15"
-    ></trigger>
-
-    <!-- TELL GROUP -->
-    <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="* tells the group '*'"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="15"
-    ></trigger>
-
-    <!-- OOC -->
-    <trigger
-    enabled="y"
-    match="You OOC '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- OOC -->
-    <trigger
-    enabled="y"
-    match="* OOCs '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- OOC SAY -->
-    <trigger
-    enabled="y"
-    match="You say OOCly '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- OOC SAY -->
-    <trigger
-    enabled="y"
-    match="* says OOCly '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- IC -->
-    <trigger
-    enabled="y"
-    match="You IC in * '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- IC -->
-    <trigger
-    enabled="y"
-    match="* ICs in * '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- CLAN -->
-    <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="^\[(\D*?)\] (\D*?)\: (.*?)$"
-    regexp="y"
-    script="chats"
-    omit_from_output="y"
-    ></trigger>
-
-    <!-- NEWBIE TALK -->
-    <trigger
-    enabled="y"
-    match="* Newbietalks '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- NEWBIE TALK -->
-    <trigger
-    enabled="y"
-    match="You Newbietalk '*'"
-    script="chats"
-    omit_from_output="y"
-    sequence="100"
-    ></trigger>
-
-    <!-- Catch-All -->
-    <!-- Disabled. Interfering with 'uncapture' -->
-    <!--
-    <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="* * '*'"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="15"
-    ></trigger>
-    -->
-
-    <!-- ??? -->
-    <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="* [*]: '*'"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="11"
-    ></trigger>
-
     <!-- CHANNEL NOTIFICATION -->
     <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="* has joined channel [*]"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="11"
+      enabled="y"
+      group="ConvoCapture"
+      match="^(.*?) has (joined|left) channel \[(.*?)\]"
+      match_text_colour="y"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="11"
     ></trigger>
 
-    <!-- CHANNEL NOTIFICATION -->
+    <!-- BANKING: You deposit/withdraw -->
+    <!--
     <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="* has left channel [*]"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="11"
+      enabled="y"
+      match="^You (deposit|withdraw) (.*?)$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+    -->
+
+    <!-- SHOPPING: You buy/sell -->
+    <!--
+    <trigger
+      enabled="y"
+      match="^You (buy|sell) (.*?)$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+    -->
+
+    <!-- LOCAL/SEMI-LOCAL/PRIVATE/CLAN CHANNEL TRIGGERS -->
+    <!-- CLAN: You and others (untested with subclans and multiclans) -->
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="^\[(\D*?)\] (\D*?)\: (.*?)$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
     ></trigger>
 
-    <!-- ??? -->
+    <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: You -->
     <trigger
-    enabled="y"
-    group="ConvoCapture"
-    match="*: *"
-    match_text_colour="y"
-    script="chats"
-    omit_from_output="y"
-    text_colour="14"
+      enabled="y"
+      match="^You (say|exclaim|ask|shout|yell) \'(.*?)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
     ></trigger>
+
+    <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually NPCs) -->
+    <trigger
+      enabled="y"
+      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually PCs) -->
+    <trigger
+      enabled="y"
+      match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells) (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- SAY OOCly: You -->
+    <trigger
+      enabled="y"
+      match="You say OOCly '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- SAY OOCly: Others -->
+    <trigger
+      enabled="y"
+      match="* says OOCly '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL: You -->
+    <trigger
+      enabled="y"
+      match="You tell * '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL: Others (usually NPCs) -->
+    <trigger
+      enabled="y"
+      match="(?P<before_speaker>.*) (?P<sname>.*) tells you (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL: Others (usually PCs) -->
+    <trigger
+      enabled="y"
+      match="(?P<sname>.*) tells you (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL REPLY: You reply to -->
+    <trigger
+      enabled="y"
+      match="You reply to * '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL REPLY: replies (back to you) -->
+    <trigger
+      enabled="y"
+      match="* replies '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- TELL GROUP: You -->
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="You tell the group '*'"
+      match_text_colour="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="15"
+    ></trigger>
+
+    <!-- TELL GROUP: Others -->
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="* tells the group '*'"
+      match_text_colour="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="15"
+    ></trigger>
+
+    <!-- GLOBAL CHANNEL TRIGGERS -->
+    <!-- MUSIC: You and Others -->
+    <!-- [Player_Name MUSIC: ] 'message' -->
+    <trigger
+      enabled="y"
+      match="[* MUSIC: ] '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- NEWBIETALK: You -->
+    <trigger
+      enabled="y"
+      match="You Newbietalk '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- NEWBIETALK: Others -->
+    <trigger
+      enabled="y"
+      match="* Newbietalks '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- GRAT: You -->
+    <trigger
+      enabled="y"
+      match="You grat '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- GRAT: Others -->
+    <trigger
+      enabled="y"
+      match="* grats '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- PRAY: You -->
+    <trigger
+      enabled="y"
+      match="You pray '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- PRAY: Others -->
+    <trigger
+      enabled="y"
+      match="* prays '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- IC: You -->
+    <trigger
+      enabled="y"
+      match="You IC in * '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- IC: Others -->
+    <trigger
+      enabled="y"
+      match="* ICs in * '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- OOC: You -->
+    <trigger
+      enabled="y"
+      match="You OOC '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- OOC: Others -->
+    <trigger
+      enabled="y"
+      match="* OOCs '*'"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+
+    <!-- CATCH-ALL TRIGGERS -->
+    <!-- ??? not sure -->
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="* [*]: '*'"
+      match_text_colour="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="11"
+    ></trigger>
+    <!-- ??? not sure -->
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="*: *"
+      match_text_colour="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="14"
+    ></trigger>
+    <!-- Disabled. Interfering with 'uncapture'
+    <trigger
+      enabled="y"
+      group="ConvoCapture"
+      match="* * '*'"
+      match_text_colour="y"
+      script="chats"
+      omit_from_output="y"
+      text_colour="15"
+    ></trigger>
+    -->
   </triggers>
 
   <aliases>
@@ -791,13 +818,40 @@
             a. Search: <!-- SAY --> or <!-- TELL --> at the beginning of this file
             b. Look for the line that begins with "match", you'll see a regexp.
       --]]
+      local before_speaker = wildcards.before_speaker
       local sname = wildcards.sname
+      local after_action = wildcards.after_action
       local smsg = wildcards.smsg
-      local smsg = smsg or ""             -- prevents smsg from being nil
-      if string.match (smsg, "You can't afford to buy") or
-         string.match (smsg, "You don't have that item.") or
+
+      -- Prevent nil values
+      local before_speaker = before_speaker or ""
+      local sname = sname or ""
+      local after_action = after_action or ""
+      local smsg = smsg or ""
+
+      -- for testing
+      --[[
+      Note("before_speaker = " .. before_speaker)
+      Note("sname = " .. sname)
+      Note("after_action = " .. after_action)
+      Note("smsg = " .. smsg)
+      --]]
+
+      if string.match (smsg, "You can\'t afford to buy") or
+         string.match (smsg, "You don\'t have that item") or
+         string.match (sname, "guard") or
+         string.match (sname, "watch") or
+         string.match (sname, "keeper") or
+         string.match (sname, "[mM]onk") or
+         string.match (sname, "[aA]dventurer") or
+         string.match (before_speaker, "[aA]dventurer") or        -- should be rare
+         sname == "Bertrand" or
+         sname == "Reslin" or
+         sname == "Rabbitfoot" or
+         sname == "Frelquen" or
          sname == "mercenary" or
          sname == "warrior" or
+         sname == "waitress" or
          sname == "thief" or
          sname == "baker" or
          sname == "alchemist" or
