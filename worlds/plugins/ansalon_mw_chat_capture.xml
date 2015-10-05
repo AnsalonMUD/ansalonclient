@@ -30,9 +30,9 @@
     purpose="Move chats to a miniwindow"
     save_state="y"
     date_written="2011-10-23"
-    date_modified="2015-10-03"
+    date_modified="2015-10-05"
     requires="4.61"
-    version="2.40"
+    version="2.42"
     id="b9e6fbfef9d59630399fb2d8"
     >
     <description trim="y"><![CDATA[
@@ -111,7 +111,15 @@
     <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually NPCs) -->
     <trigger
       enabled="y"
-      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+    <trigger
+      enabled="y"
+      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) in (?P<after_action>.*)\'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -121,7 +129,7 @@
     <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually PCs) -->
     <trigger
       enabled="y"
-      match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells) (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells)\'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -158,7 +166,15 @@
     <!-- TELL: Others (usually NPCs) -->
     <trigger
       enabled="y"
-      match="(?P<before_speaker>.*) (?P<sname>.*) tells you (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      match="(?P<before_speaker>.*) (?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+    <trigger
+      enabled="y"
+      match="(?P<before_speaker>.*) (?P<sname>.*) tells you in (?P<after_action>.*)\'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -168,7 +184,15 @@
     <!-- TELL: Others (usually PCs) -->
     <trigger
       enabled="y"
-      match="(?P<sname>.*) tells you (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      match="(?P<sname>.*) tells you \'(?P<smsg>.*)\'$"
+      regexp="y"
+      script="chats"
+      omit_from_output="y"
+      sequence="100"
+    ></trigger>
+    <trigger
+      enabled="y"
+      match="(?P<sname>.*) tells you in (?P<after_action>.*)\'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -504,10 +528,10 @@
           date_format = "[%d %b %H:%M:%S] "
       end -- if
       if WINDOW_WIDTH == nil then
-          WINDOW_WIDTH = (font_width*80)+SCROLL_BAR_WIDTH+84 -- 164 columns
+          WINDOW_WIDTH = (font_width*80)+SCROLL_BAR_WIDTH+84 -- 74 characters
       end
       if WINDOW_HEIGHT == nil then
-        WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*6)+4 -- 8 lines
+        WINDOW_HEIGHT = theme.TITLE_HEIGHT+(line_height*6)+4 -- 5 lines
       end -- if
       init(true)
       OnPluginEnable ()  -- do initialization stuff
@@ -839,32 +863,43 @@
 
       if string.match (smsg, "You can\'t afford to buy") or
          string.match (smsg, "You don\'t have that item") or
+         string.match (smsg, "I don\'t sell that") or
+         string.match (smsg, "I don\'t trade with folks I can't see") or
+
          string.match (sname, "guard") or
-         string.match (sname, "watch") or
          string.match (sname, "keeper") or
+         string.match (sname, "watch") or
+
+         string.match (sname, "[dD]warf") or
+         string.match (sname, "[(hH)ob]?[gG]oblin") or
+         string.match (sname, "[hH]uman") or
+
+         string.match (sname, "[cC]leric") or
+         string.match (sname, "[mM]age") or
          string.match (sname, "[mM]onk") or
+         string.match (sname, "[rR]anger") or
+         string.match (sname, "[tT]hief") or
+         string.match (sname, "[wW]arrior") or
+
+         string.match (sname, "[aA]rmorer") or
+         string.match (sname, "[bB]aker") or
+         string.match (sname, "[gG]rocer") or
+         string.match (sname, "[hH]unter") or
+         string.match (sname, "[pP]riest") or
+
          string.match (sname, "[aA]dventurer") or
+         string.match (sname, "[mM]ercenary") or
+         string.match (sname, "[wW]anderer") or
+
+         string.match (sname, "[wW]ait(er|ress)") or
+
          string.match (before_speaker, "[aA]dventurer") or        -- should be rare
+
          sname == "Bertrand" or
          sname == "Reslin" or
          sname == "Rabbitfoot" or
          sname == "Frelquen" or
-         sname == "mercenary" or
-         sname == "warrior" or
-         sname == "waitress" or
-         sname == "thief" or
-         sname == "baker" or
-         sname == "alchemist" or
-         sname == "wanderer" or
-         sname == "grocer" or
-         sname == "armorer" or
-         sname == "dwarf" or
-         sname == "goblin" or
-         sname == "human" or
-         sname == "ranger" or
-         sname == "mage" or
-         sname == "cleric" or
-         sname == "priest" or
+
          sname == "insert-above" then
         for _, v in ipairs (styles) do
           ColourTell (RGBColourToName (v.textcolour),RGBColourToName (v.backcolour),v.text)
