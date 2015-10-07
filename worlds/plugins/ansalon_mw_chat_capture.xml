@@ -30,9 +30,9 @@
     purpose="Move chats to a miniwindow"
     save_state="y"
     date_written="2011-10-23"
-    date_modified="2015-10-05"
+    date_modified="2015-10-06"
     requires="4.61"
-    version="2.42"
+    version="2.43"
     id="b9e6fbfef9d59630399fb2d8"
     >
     <description trim="y"><![CDATA[
@@ -111,7 +111,7 @@
     <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually NPCs) -->
     <trigger
       enabled="y"
-      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
+      match="^(?P<before_speaker>.*) (?P<sname>.*) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -119,7 +119,7 @@
     ></trigger>
     <trigger
       enabled="y"
-      match="^(?P<before_speaker>.*) (?P<sname>\w+) (says|exclaims|asks|shouts|yells) in (?P<after_action>.*)\'(?P<smsg>.*)\'$"
+      match="^(?P<before_speaker>.*) (?P<sname>.*) (says|exclaims|asks|shouts|yells) in (?P<after_action>.*)\'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -129,7 +129,7 @@
     <!-- SAY/EXCLAIM/ASK/SHOUT/YELL: Others (usually PCs) -->
     <trigger
       enabled="y"
-      match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells)\'(?P<smsg>.*)\'$"
+      match="^(?P<sname>.*) (says|exclaims|asks|shouts|yells) \'(?P<smsg>.*)\'$"
       regexp="y"
       script="chats"
       omit_from_output="y"
@@ -865,6 +865,13 @@
          string.match (smsg, "You don\'t have that item") or
          string.match (smsg, "I don\'t sell that") or
          string.match (smsg, "I don\'t trade with folks I can't see") or
+         string.match (smsg, "I\'m afraid I don\'t have enough wealth") or
+
+         -- RINGMASTER --
+         string.match (smsg, "well hello there") or
+         string.match (smsg, "Care to spar with me today") or
+         string.match (smsg, "You better make sure it\'s one on one") or
+         string.match (sname, "[mM][aA][sS][tT][eE][rR]") or
 
          string.match (sname, "guard") or
          string.match (sname, "keeper") or
@@ -872,7 +879,7 @@
 
          string.match (sname, "[dD]warf") or
          string.match (sname, "[(hH)ob]?[gG]oblin") or
-         string.match (sname, "[hH]uman") or
+         string.match (sname, "[(hH)u]?[mM]an") or
 
          string.match (sname, "[cC]leric") or
          string.match (sname, "[mM]age") or
@@ -886,18 +893,33 @@
          string.match (sname, "[gG]rocer") or
          string.match (sname, "[hH]unter") or
          string.match (sname, "[pP]riest") or
+         string.match (sname, "[tT]ailor") or
 
          string.match (sname, "[aA]dventurer") or
          string.match (sname, "[mM]ercenary") or
+         string.match (sname, "[tT]inker") or
          string.match (sname, "[wW]anderer") or
 
+         string.match (sname, "[cC]artogr[ao]pher") or
+         string.match (sname, "[dD]ealer") or
+         string.match (sname, "[mM]aker") or
+         string.match (sname, "[oO]ner") or
          string.match (sname, "[wW]ait(er|ress)") or
+         string.match (sname, "[wW]itch") or
+         string.match (sname, "[wW]orker") or
+         string.match (sname, "[yY]outh") or
 
          string.match (before_speaker, "[aA]dventurer") or        -- should be rare
+         string.match (before_speaker, "Garen") or
+         string.match (before_speaker, "Swiftblade") or
 
+         sname == "Belzar" or
          sname == "Bertrand" or
+         sname == "Garen" or
+         sname == "Helga" or
          sname == "Reslin" or
          sname == "Rabbitfoot" or
+         sname == "Swiftblade" or
          sname == "Frelquen" or
 
          sname == "insert-above" then
