@@ -340,8 +340,7 @@
       sequence="100"
     ></trigger>
 
-    <!-- CATCH-ALL TRIGGERS -->
-    <!-- ??? not sure -->
+    <!-- PRIVATE channels -->
     <trigger
       enabled="y"
       group="ConvoCapture"
@@ -351,6 +350,8 @@
       omit_from_output="y"
       text_colour="11"
     ></trigger>
+
+    <!-- CATCH-ALL TRIGGERS -->
     <!-- ??? not sure -->
     <trigger
       enabled="y"
@@ -878,6 +879,9 @@
          string.match (sname, "watch") or
 
          string.match (sname, "[dD]warf") or
+         string.match (sname, "[eE]lf") or
+         string.match (sname, "[gG]nome") or
+         string.match (sname, "[kK]ender") or
          string.match (sname, "[(hH)ob]?[gG]oblin") or
          string.match (sname, "[(hH)u]?[mM]an") or
 
@@ -894,6 +898,7 @@
          string.match (sname, "[hH]unter") or
          string.match (sname, "[pP]riest") or
          string.match (sname, "[tT]ailor") or
+         string.match (sname, "[tT]anner") or
 
          string.match (sname, "[aA]dventurer") or
          string.match (sname, "[mM]ercenary") or
@@ -902,8 +907,12 @@
 
          string.match (sname, "[cC]artogr[ao]pher") or
          string.match (sname, "[dD]ealer") or
+         string.match (sname, "[gG]uest") or
          string.match (sname, "[mM]aker") or
          string.match (sname, "[oO]ner") or
+         string.match (sname, "[oO]verseer") or
+         string.match (sname, "[sS]ervant") or
+         string.match (sname, "[tT]utor") or
          string.match (sname, "[wW]ait(er|ress)") or
          string.match (sname, "[wW]itch") or
          string.match (sname, "[wW]orker") or
@@ -913,13 +922,22 @@
          string.match (before_speaker, "Garen") or
          string.match (before_speaker, "Swiftblade") or
 
+         sname == "Asurik" or
          sname == "Belzar" or
          sname == "Bertrand" or
+         sname == "Cropier" or
+         sname == "Dretnon" or
+         sname == "Ebonheart" or
          sname == "Garen" or
+         sname == "Glursock" or
          sname == "Helga" or
+         sname == "Otik" or
          sname == "Reslin" or
          sname == "Rabbitfoot" or
+         sname == "Ru-Marn" or
          sname == "Swiftblade" or
+         sname == "Tika" or
+         sname == "Tabiek" or
          sname == "Frelquen" or
 
          sname == "insert-above" then
