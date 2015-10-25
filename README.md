@@ -20,7 +20,7 @@ Scripts and plugin collection for the **AnsalonMUD** MUSHclient.
 ## Downloads
 Right-click and 'Save As' to download
 
-* [Download All](https://github.com/AnsalonMUD/ansalonclient/archive/master.zip)
+* [Client Download + All Plugins](https://github.com/AnsalonMUD/ansalonclient/archive/master.zip) MUSHclient v4.99
 * [ASCII Map Capture](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_map_capture.xml): Captures the map and display in a dedicated map window.
 * [Chat Capture](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_chat_capture.xml): Capture chats to display in a dedicated chat window.
 * [Experience Bar Prompt-based](https://github.com/AnsalonMUD/ansalonclient/raw/master/worlds/plugins/ansalon_mw_expbar_prompt.xml): A bottom experience bar based on your prompt setup.
