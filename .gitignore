@@ -1,1 +1,6 @@
 /.project
+*.MCL
+*.mcl
+lua/AnsalonMUD-your-custom.lua
+worlds/AnsalonMUD.MCL
+worlds/plugins/state/**
