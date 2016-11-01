@@ -32,7 +32,7 @@
     date_written="2011-10-23"
     date_modified="2015-10-25"
     requires="4.61"
-    version="2.51"
+    version="2.52"
     id="b9e6fbfef9d59630399fb2d8"
     >
     <description trim="y"><![CDATA[
@@ -920,6 +920,7 @@
          string.match (sname, "[hH]unter") or
          string.match (sname, "[jJ]eweler") or
          string.match (sname, "[kK]eeper") or
+         string.match (sname, "[kK]night") or
          string.match (sname, "[mM]aker") or
          string.match (sname, "[mM]ercenary") or
          string.match (sname, "[mM]erchant") or
@@ -936,6 +937,7 @@
          string.match (sname, "[sS]tatue") or
          string.match (sname, "[tT]ailor") or
          string.match (sname, "[tT]anner") or
+         string.match (sname, "[tT]eenager") or
          string.match (sname, "[tT]inker") or
          string.match (sname, "[tT]rader") or
          string.match (sname, "[tT]utor") or
@@ -961,6 +963,7 @@
          sname == "Glursock" or
          sname == "Helga" or
          sname == "Jenpu" or
+         sname == "Joe" or
          sname == "Otik" or
          sname == "Reslin" or
          sname == "Rabbitfoot" or
@@ -969,6 +972,7 @@
          sname == "Tika" or
          sname == "Tabiek" or
          sname == "Vortex" or
+         sname == "Waran" or
 
          -- placeholder for "then" --
          sname == "insert-above" then

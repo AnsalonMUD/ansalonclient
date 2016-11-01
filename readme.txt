@@ -1,7 +1,7 @@
-MUSHclient version 4.99
+MUSHclient version 5.03
 =======================
 
-Friday, 28th August 2015
+Friday, 23 September 2016
 
 
 Author: Nick Gammon
@@ -121,6 +121,8 @@ Credits
 Various aspects of MUSHclient have been written with the help of other people. 
 
 Please see Help -> About -> Credits for a list of those who have contributed.
+
+MUSHclient splash screen drawn by Isobel Gammon.
 
 
 Comments welcome
